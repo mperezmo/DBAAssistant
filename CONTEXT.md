@@ -4,7 +4,11 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (modo local) — Auth0 pendiente de tenant
+> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (tag v0.2.0) · Sprint 3 🚧 en progreso
+>
+> Fix post-Sprint 2: `index.html` carga los JS con `?v=2` (cache-busting) para
+> evitar que el navegador sirva un `app.js` viejo y rompa por doble declaración
+> de `API_BASE_URL`.
 
 ---
 

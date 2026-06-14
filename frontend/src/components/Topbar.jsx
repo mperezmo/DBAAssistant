@@ -10,7 +10,7 @@ function EnvPill({ env }) {
   );
 }
 
-const LABELS = { chat: 'Chat IA' };
+const LABELS = { chat: 'Chat IA', schema: 'Esquema de BD' };
 
 export default function Topbar({ active, env }) {
   return (

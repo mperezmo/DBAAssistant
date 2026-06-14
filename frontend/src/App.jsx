@@ -4,6 +4,9 @@ import Sidebar from './components/Sidebar.jsx';
 import Topbar from './components/Topbar.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
 import ChatPage from './pages/Chat.jsx';
+import SchemaPage from './pages/Schema.jsx';
+
+const PAGES = { chat: ChatPage, schema: SchemaPage };
 
 export default function App() {
   const { isLoading, isAuthenticated, error } = useAuth0();
@@ -31,12 +34,14 @@ export default function App() {
 
   if (!isAuthenticated) return <LoginScreen />;
 
+  const Page = PAGES[page] || ChatPage;
+
   return (
     <div className="app-shell">
       <Sidebar active={page} onNav={setPage} />
       <main className="main">
         <Topbar active={page} env={env} />
-        <ChatPage env={env} />
+        <Page env={env} />
       </main>
     </div>
   );

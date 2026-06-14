@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   ]},
   { section: 'Conocimiento', items: [
     { id: 'context', label: 'Contexto de Negocio', icon: 'book' },
-    { id: 'schema', label: 'Histórico de Schema', icon: 'history' },
+    { id: 'schema', label: 'Esquema de BD', icon: 'table' },
     { id: 'audit', label: 'Auditoría', icon: 'audit' },
   ]},
   { section: 'Sistema', items: [
@@ -21,8 +21,8 @@ const NAV_ITEMS = [
   ]},
 ];
 
-// En Sprint 3 solo "Chat IA" está conectado; el resto son sprints futuros.
-const ENABLED = new Set(['chat']);
+// Sprint 3: Chat IA · Sprint 4: Esquema de BD. El resto, sprints futuros.
+const ENABLED = new Set(['chat', 'schema']);
 
 function initialsOf(name) {
   const parts = (name || 'Usuario').trim().split(/\s+/).slice(0, 2);

@@ -4,13 +4,20 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (tag v0.2.0) · Sprint 3 ✅ (chat backend+frontend)
+> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (v0.2.0) · Sprint 3 ✅ · Sprint 4 🚧 (metadata/esquema)
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
 > **React + Vite** (proyecto en `frontend/`, build multi-stage en Docker → nginx).
-> Se implementó el diseño de Claude Design (`design/DBA Assistant.html`): pantalla
-> de login (Auth0), shell (sidebar + topbar) y la página de Chat conectada al
-> backend. Login del frontend ahora es **Auth0** (`AUTH_MODE=auth0`).
+> Se implementó el diseño de Claude Design (`design/DBA Assistant.html`): login
+> (Auth0), shell (sidebar + topbar) y páginas conectadas al backend. Login = **Auth0**.
+>
+> **Auth0 (funcionando):** app SPA `DBAAssistant`, API/audience `https://dba-assistant-api`.
+> Login OK tras: (1) crear la API en Auth0, (2) habilitar **User-Delegated Access**
+> en esa API. El `AUTH0_CLIENT_ID` se incrusta en el build del frontend (build arg).
+>
+> **Sprint 4 (en curso):** introspección real de SQL Server (tablas, columnas,
+> índices, FKs) en `/schema/*`, página "Esquema de BD" en el frontend, y un
+> esquema de ejemplo sembrado (`backend/scripts/seed_schema.sql`).
 
 ---
 

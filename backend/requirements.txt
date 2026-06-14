@@ -14,6 +14,9 @@ redis==5.2.1
 python-dotenv==1.0.1
 httpx==0.28.1
 
+# IA / Claude (Sprint 3)
+anthropic==0.40.0
+
 # Autenticación / Seguridad (Sprint 2)
 PyJWT[crypto]==2.10.1     # JWT: HS256 (local) y RS256 + JWKS (Auth0)
 passlib[bcrypt]==1.7.4    # Hash de contraseñas

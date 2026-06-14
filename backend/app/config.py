@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     auth0_client_secret: str = ""
     auth0_audience: str = ""
 
+    # ── Claude / IA (Sprint 3) ────────────────────────────────
+    anthropic_api_key: str = ""
+    claude_model: str = "claude-3-5-sonnet-20241022"
+    claude_max_tokens: int = 1024
+
     @property
     def cors_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

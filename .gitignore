@@ -1,0 +1,58 @@
+# ── Secretos / Entorno ─────────────────────────
+# NUNCA subir .env: contiene la contraseña de SA y futuras API keys
+.env
+*.env
+!*.env.example
+!env.example.txt
+backend/.env
+
+# ── Python ─────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ── Node / Frontend (sprints futuros) ──────────
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ── Docker ─────────────────────────────────────
+# (los volúmenes viven en el daemon, no en el repo; nada que ignorar aquí
+#  salvo overrides locales)
+docker-compose.override.yml
+
+# ── IDE / Editor ───────────────────────────────
+.vscode/
+.idea/
+*.swp
+*~
+
+# ── Sistema operativo ──────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs / temporales ──────────────────────────
+*.log
+logs/
+*.tmp

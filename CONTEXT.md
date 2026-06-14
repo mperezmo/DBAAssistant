@@ -1,379 +1,349 @@
 # DBA Assistant - Project Context
 
+> Documento vivo de contexto del proyecto. Sirve como referencia para retomar el
+> trabajo en cualquier momento (humano o asistente IA).
+>
+> **Última actualización:** 2026-06-14
+> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (modo local) — Auth0 pendiente de tenant
+
+---
+
 ## 📋 Visión General
-**Nombre del Proyecto:** DBA Assistant  
-**Tipo:** Aplicación Web Full-Stack  
-**Objetivo Principal:** Asistente inteligente para administración y optimización de bases de datos usando IA generativa (Claude API)
+**Nombre:** DBA Assistant
+**Tipo:** Aplicación Web Full-Stack
+**Objetivo:** Asistente inteligente para administración y optimización de bases de
+datos usando IA generativa (Claude API). Permite a DBAs interactuar en lenguaje
+natural con sus bases de datos: generar SQL, analizar rendimiento y obtener
+recomendaciones de optimización.
+
+**Usuarios objetivo:** DBAs, desarrolladores, analistas de datos.
+**Repositorio:** `C:\Users\marti\GitHub\DBAAssistant` (GitHub: mperezmo/DBAAssistant)
 
 ---
 
-## 🎯 Descripción del Proyecto
-Desarrollar una aplicación web que permita a DBAs (Database Administrators) interactuar de forma natural con sus bases de datos, generando queries SQL automáticas, realizando análisis de rendimiento, y obteniendo recomendaciones de optimización mediante Claude API.
+## 🚦 Estado de los Sprints
 
-**Usuarios Objetivo:**
-- Database Administrators (DBAs)
-- Desarrolladores
-- Analistas de datos
+| Sprint | Tema | Estado |
+|--------|------|--------|
+| **1** | Fundamentos e Infraestructura | ✅ **COMPLETADO** |
+| **2** | Autenticación y Seguridad (Auth0 + JWT) | ✅ **COMPLETADO** (modo local; Auth0 listo a falta de tenant) |
+| 3 | Chat & Claude API | ⬜ Pendiente |
+| 4 | Análisis de BD (metadata SQL Server) | ⬜ Pendiente |
+| 5 | Generación y Ejecución SQL | ⬜ Pendiente |
+| 6 | Cache & Optimización (Redis) | ⬜ Pendiente |
+| 7 | DevOps & Deployment (CI/CD, Azure) | ⬜ Pendiente |
+| 8 | Testing & Docs | ⬜ Pendiente |
 
 ---
 
-## 📐 Arquitectura de la Aplicación
+## ✅ Sprint 1 — Lo que está HECHO y FUNCIONANDO
+
+Vertical slice de infraestructura verificado de extremo a extremo:
+
+1. **Estructura del repo** creada (backend / frontend / tests / nginx).
+2. **Docker Compose** levanta 5 contenedores: `sqlserver`, `mongo`, `redis`,
+   `backend`, `frontend`. Los 3 de datos con healthchecks.
+3. **FastAPI** arranca con `/` y `/health`. El endpoint `/health` verifica conexión
+   real a las 3 bases de datos.
+4. **Frontend** mínimo (HTML/CSS/JS vanilla) que consume `/health` y muestra el
+   estado de cada servicio.
+5. **Tests** con pytest (3 tests, en verde).
+
+**Verificación final lograda:**
+```bash
+curl http://localhost:8000/health
+# {"status":"ok","services":{"sqlserver":true,"mongo":true,"redis":true}}
+```
+- Frontend `http://localhost:3000` → 3 servicios en verde.
+- `python -m pytest -q` → 3 passed.
+
+> ⚠️ **Alcance deliberado:** En Sprint 1 NO se integró Auth0 ni Claude API. Sus
+> variables existen en `.env` como placeholders vacíos para sprints posteriores.
+
+---
+
+## ✅ Sprint 2 — Autenticación y Seguridad
+
+Estrategia elegida: **HÍBRIDA**. Un switch `AUTH_MODE` decide el motor de auth:
+- `AUTH_MODE=local` (actual): FastAPI emite y valida **JWT propios (HS256)**
+  firmados con `SECRET_KEY`. No requiere servicios externos → se puede probar ya.
+- `AUTH_MODE=auth0`: valida **JWT RS256 de Auth0** contra su JWKS público. El
+  código ya está implementado; solo falta crear el tenant y rellenar el `.env`.
+
+**Implementado y verificado:**
+- `POST /auth/login` (modo local): usuario/contraseña → JWT. Usa
+  `OAuth2PasswordRequestForm` (form-urlencoded).
+- `GET /auth/me`: ruta **PROTEGIDA** de ejemplo; requiere `Authorization: Bearer`.
+- Dependencia `get_current_user` (en `dependencies.py`) que protege rutas y
+  funciona en ambos modos.
+- Hash de contraseñas con **passlib + bcrypt**. El hash nunca se expone en la API.
+- Frontend con **Login/Logout**: formulario, guarda el JWT en `localStorage`,
+  lo adjunta como Bearer, auto-login si el token sigue válido, y oculta el panel
+  de estado tras logout.
+- 5 tests de auth (login ok/ko, ruta protegida con/sin token, token inválido).
+
+**Usuarios demo (modo local, en memoria):**
+| Usuario | Contraseña | Roles |
+|---------|-----------|-------|
+| `admin` | `admin123` | admin |
+| `dba`   | `dba12345` | dba   |
+
+> ⚠️ El almacén de usuarios (`services/users.py`) es **en memoria** y no persiste.
+> Pensado para demo; reemplazar por tabla en SQL Server más adelante.
+
+**Verificación lograda:**
+```
+POST /auth/login (admin/admin123)        → 200 + access_token
+GET  /auth/me sin token                  → 401
+GET  /auth/me con Bearer válido          → 200 {username, roles, ...}
+POST /auth/login con password mala       → 401
+python -m pytest -q                      → 8 passed
+```
+
+---
+
+## 📐 Arquitectura
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    CAPA CLIENTE (Frontend)              │
-│  HTML5 + JavaScript + CSS (Responsive UI)              │
-└────────────────┬────────────────────────────────────────┘
-                 │ REST API / WebSocket
-┌────────────────▼────────────────────────────────────────┐
-│              CAPA BACKEND (Python FastAPI)              │
-│  • Autenticación (Auth0 + JWT)                          │
-│  • Gestión de Chat                                      │
-│  • Generación de SQL (Claude API)                       │
-│  • Análisis de Bases de Datos                           │
-│  • Ejecución de Queries                                 │
-└────────────────┬────────────────────────────────────────┘
-                 │
-     ┌───────────┼───────────┬──────────────┐
-     │           │           │              │
-┌────▼──┐  ┌────▼────┐ ┌───▼─────┐  ┌────▼────┐
-│  SQL  │  │MongoDB  │ │  Redis  │  │ Azure   │
-│Server │  │  (Chat  │ │ (Cache) │  │  Vault  │
-│2019+  │  │ History)│ │         │  │(Secrets)│
-└───────┘  └─────────┘ └─────────┘  └─────────┘
-
-┌─────────────────────────────────────────────────────────┐
-│         SERVICIOS EXTERNOS                              │
-│  • Anthropic Claude API (LLM)                           │
-│  • Auth0 (Autenticación)                                │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  FRONTEND  (HTML5 + JS vanilla + CSS)         │  localhost:3000 (nginx)
+└───────────────┬──────────────────────────────┘
+                │ REST (fetch /health)
+┌───────────────▼──────────────────────────────┐
+│  BACKEND  (Python 3.11 + FastAPI + Uvicorn)   │  localhost:8000
+│  Sprint 1: rutas / y /health                  │
+└───────────────┬──────────────────────────────┘
+       ┌─────────┼──────────┐
+   ┌───▼───┐ ┌───▼────┐ ┌───▼───┐
+   │ SQL   │ │MongoDB │ │ Redis │
+   │Server │ │  :27017│ │ :6379 │
+   │ :1433 │ └────────┘ └───────┘
+   └───────┘
+SERVICIOS EXTERNOS (futuros): Anthropic Claude API, Auth0
 ```
 
 ---
 
-## 🛠️ Stack Tecnológico
+## 🛠️ Stack Tecnológico (estado real)
 
-### Frontend
-- **HTML5, CSS3, JavaScript (Vanilla)**
-- Alternativa: Vue.js o React (opcional)
-- Responsive Design (Mobile-First)
-- WebSocket para actualizaciones en tiempo real
+### Backend (implementado)
+- Python 3.11, FastAPI 0.115, Uvicorn 0.34
+- pydantic 2.10 + pydantic-settings 2.7 (config por env)
+- SQLAlchemy 2.0 + pyodbc 5.2 (SQL Server, ODBC Driver 18)
+- pymongo 4.10 (MongoDB)
+- redis 5.2 (redis-py)
+- httpx (cliente/tests), pytest + pytest-asyncio
 
-### Backend
-- **Python 3.11+**
-- **FastAPI** (Framework web asincrónico)
-- **Uvicorn** (ASGI Server)
-- **SQLAlchemy** (ORM para SQL Server)
-- **PyMongo** (Driver MongoDB)
-- **Redis** (Cliente Python redis-py)
+### Frontend (implementado)
+- HTML5 + CSS3 + JavaScript vanilla. Servido por nginx:alpine.
 
-### Bases de Datos
-- **SQL Server 2019+** (Datos principales, schemas, tablas)
-- **MongoDB** (Historial de chats, logs)
-- **Redis** (Cache de queries frecuentes, metadata)
+### Bases de Datos (corriendo en Docker)
+- SQL Server 2022 (`mcr.microsoft.com/mssql/server:2022-latest`)
+- MongoDB 7
+- Redis 7-alpine
 
-### Seguridad & Autenticación
-- **Auth0** (OAuth 2.0, OpenID Connect)
-- **JWT** (JSON Web Tokens)
-- **Azure Key Vault** (Gestión de credenciales)
-
-### Integración IA
-- **Anthropic Claude API** (Modelo: Claude 3.5 Sonnet o Superior)
-- Manejo de tokens, costos, rate limiting
-
-### DevOps
-- **Docker & Docker Compose**
-- **GitHub Actions** (CI/CD)
-- **Azure Container Registry** (Registry)
-- **Azure App Service** (Hosting)
-- **Nginx** (Reverse Proxy)
+### Pendiente (sprints futuros)
+- Auth0 / JWT, Anthropic Claude API, Azure Key Vault, WebSocket,
+  GitHub Actions CI/CD, Nginx como reverse proxy del backend.
 
 ---
 
-## 📁 Estructura del Proyecto
+## 📁 Estructura ACTUAL del Proyecto
 
 ```
 DBAAssistant/
 ├── backend/
 │   ├── app/
-│   │   ├── __init__.py
-│   │   ├── main.py                 # Punto de entrada FastAPI
-│   │   ├── config.py               # Configuración (variables entorno)
-│   │   ├── models/                 # Modelos de datos
-│   │   ├── routes/                 # Rutas API
-│   │   ├── services/               # Lógica de negocio
-│   │   ├── utils/                  # Funciones auxiliares
-│   │   └── dependencies.py         # Dependencias FastAPI
+│   │   ├── main.py            # FastAPI: incluye routers health y auth, CORS
+│   │   ├── config.py          # Pydantic Settings (lee .env) + settings de auth
+│   │   ├── dependencies.py    # get_current_user (protege rutas) [Sprint 2]
+│   │   ├── models/
+│   │   │   └── auth.py        # Pydantic: Token, User, UserInDB [Sprint 2]
+│   │   ├── routes/
+│   │   │   ├── health.py      # GET /health → estado de las 3 DBs
+│   │   │   └── auth.py        # POST /auth/login, GET /auth/me [Sprint 2]
+│   │   └── services/
+│   │       ├── db.py          # engines/clients + check_* (sqlserver/mongo/redis)
+│   │       ├── auth.py        # hashing + JWT (HS256 local / RS256 Auth0) [Sprint 2]
+│   │       └── users.py       # almacén de usuarios en memoria (demo) [Sprint 2]
+│   ├── Dockerfile             # Debian bookworm + ODBC Driver 18
 │   ├── requirements.txt
-│   ├── Dockerfile
-│   └── .env.example
+│   ├── env.example.txt        # plantilla de variables (NOTA: nombre no estándar)
+│   └── .env                   # IGNORADO por git
 ├── frontend/
-│   ├── index.html
+│   ├── index.html             # vistas login + app (protegida)
 │   ├── css/
-│   │   ├── style.css
-│   │   └── responsive.css
-│   ├── js/
-│   │   ├── app.js
-│   │   ├── chat.js
-│   │   ├── auth.js
-│   │   └── api.js
-│   └── assets/
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── API_DOCUMENTATION.md
-│   ├── DATABASE_SCHEMA.md
-│   └── SETUP.md
-├── docker-compose.yml
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yml
+│   │   └── style.css          # estilos del panel + formulario de login
+│   └── js/
+│       ├── auth.js            # login/logout, JWT en localStorage, Bearer [Sprint 2]
+│       └── app.js             # panel de estado (fetch a /health)
 ├── tests/
-│   ├── unit/
-│   └── integration/
-├── .env.example
-├── README.md
-├── CONTEXT.md                      # Este archivo
-└── CONTRIBUTING.md
+│   ├── conftest.py            # fixture: TestClient(app)
+│   └── unit/
+│       └── test_health.py     # 3 tests (root + health ok + health degraded)
+├── nginx/                     # (carpeta creada, conf de proxy pendiente)
+├── docker-compose.yml         # 5 servicios
+├── pytest.ini                 # pythonpath=backend, testpaths=tests
+├── .gitignore                 # ignora .env, __pycache__, .pytest_cache, etc.
+├── .env                       # variables reales (raíz; IGNORADO por git)
+├── CONTEXT.md                 # este archivo
+├── TFI_DBA_Assistant_PerezMoreno.pdf
+└── TFI_PEREZMORENO.pdf
 ```
 
 ---
 
 ## 🔐 Variables de Entorno
 
+**Hay DOS `.env` relevantes:**
+- **`/.env` (raíz):** el que usa `docker-compose` (directiva `env_file: .env`).
+  Este es el que importa para levantar los contenedores.
+- `backend/.env`: presente, pero el backend en Docker recibe sus vars vía
+  `env_file` del compose, no por este archivo.
+
+**Regla clave de hosts (causó el bug inicial):**
+- Cuando el backend corre **dentro de Docker**, los hosts deben ser los **nombres
+  de servicio** de compose, NO `localhost` ni el nombre del PC:
+  - `SQL_SERVER_HOST=sqlserver`
+  - `MONGODB_URI=mongodb://mongo:27017`
+  - `REDIS_URL=redis://redis:6379/0`
+- Si algún día corres el backend **fuera de Docker** (uvicorn local), entonces sí
+  usarías `localhost`.
+
+**Valores actuales relevantes (.env raíz):**
 ```env
-# Backend
-PYTHON_ENV=development
-DEBUG=True
-SECRET_KEY=your_secret_key_here
-
-# Base de Datos SQL Server
-SQL_SERVER_HOST=localhost
+CORS_ORIGINS=http://localhost:3000,http://localhost:8080   # OJO: necesita ://
+SQL_SERVER_HOST=sqlserver
 SQL_SERVER_PORT=1433
-SQL_SERVER_USER=sa
-SQL_SERVER_PASSWORD=YourPassword123!
+SQL_SERVER_USER=sa            # Sprint 1 usa 'sa' (login DBAAssistant aún no existe)
+SQL_SERVER_PASSWORD=Marlb0r0  # = MSSQL_SA_PASSWORD del contenedor
 SQL_SERVER_DATABASE=DBAAssistant
-
-# MongoDB
-MONGODB_URI=mongodb://localhost:27017
-MONGODB_DATABASE=dba_assistant
-
-# Redis
-REDIS_URL=redis://localhost:6379
-
-# Auth0
-AUTH0_DOMAIN=your_domain.auth0.com
-AUTH0_CLIENT_ID=your_client_id
-AUTH0_CLIENT_SECRET=your_client_secret
-
-# Claude API
-ANTHROPIC_API_KEY=sk-ant-...
-CLAUDE_MODEL=claude-3-5-sonnet-20241022
-
-# Azure (Opcional)
-AZURE_VAULT_URL=https://your-vault.vault.azure.net/
-AZURE_SUBSCRIPTION_ID=your_subscription_id
-
-# App Settings
-APP_NAME=DBA Assistant
-APP_VERSION=1.0.0
-CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+MONGODB_URI=mongodb://mongo:27017
+MONGODB_DATABASE=DBAAssistant
+REDIS_URL=redis://redis:6379/0
+# Auth (Sprint 2):
+AUTH_MODE=local                 # local | auth0
+SECRET_KEY=<clave-aleatoria>    # firma HS256 en modo local
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+AUTH0_DOMAIN= / AUTH0_CLIENT_ID= / AUTH0_CLIENT_SECRET= / AUTH0_AUDIENCE=
+# Placeholders (Sprint 3+):
+ANTHROPIC_API_KEY= / CLAUDE_MODEL=claude-3-5-sonnet-20241022
 ```
 
 ---
 
-## 🎬 Sprints Planificados
+## 🚀 Cómo Levantar el Entorno (local)
 
-### Sprint 1: Fundamentos e Infraestructura (2-3 semanas)
-- [ ] Setup del repositorio y estructura
-- [ ] Configuración de Docker Compose
-- [ ] Base de datos SQL Server inicial
-- [ ] FastAPI project setup
-- [ ] Frontend básico (HTML/CSS)
-- [ ] Variables de entorno
+```bash
+# 1. Build del backend (la 1ª vez o tras cambiar Dockerfile/requirements)
+docker-compose build --no-cache backend
 
-### Sprint 2: Autenticación y Seguridad (1-2 semanas)
-- [ ] Integración Auth0
-- [ ] JWT implementation
-- [ ] Login/Logout UI
-- [ ] Rutas protegidas
+# 2. Levantar todo
+docker-compose up -d
 
-### Sprint 3: Chat & Claude API (2-3 semanas)
-- [ ] Chat interface (frontend)
-- [ ] WebSocket setup
-- [ ] Claude API integration
-- [ ] Prompt engineering
-- [ ] MongoDB chat history
+# 3. Verificar estado de contenedores
+docker-compose ps           # los 5 en Up / healthy
 
-### Sprint 4: Análisis de BD (2 semanas)
-- [ ] Lectura de metadata (SQL Server)
-- [ ] Análisis de performance
-- [ ] Detección de anomalías
-- [ ] Auditoría
+# 4. Verificar API
+curl http://localhost:8000/health   # esperado: status "ok"
 
-### Sprint 5: Generación y Ejecución SQL (2-3 semanas)
-- [ ] SQL generation from prompts
-- [ ] Query validation
-- [ ] Ejecución controlada
-- [ ] Rollback/transacciones
-- [ ] Historial de queries
+# 5. Frontend
+#    Abrir http://localhost:3000 (Ctrl+F5 para evitar caché)
 
-### Sprint 6: Cache & Optimización (1-2 semanas)
-- [ ] Redis cache implementation
-- [ ] Performance monitoring
-- [ ] Query optimization
+# 6. Tests (desde la RAÍZ del repo, no desde tests/)
+python -m pytest -q
+```
 
-### Sprint 7: DevOps & Deployment (1-2 semanas)
-- [ ] GitHub Actions CI/CD
-- [ ] Docker images
-- [ ] Azure deployment
+**Puertos:** backend 8000 · frontend 3000 · SQL Server 1433 · Mongo 27017 · Redis 6379.
 
-### Sprint 8: Testing & Docs (1-2 semanas)
-- [ ] Unit tests
-- [ ] Integration tests
-- [ ] API documentation
-- [ ] User guide
+---
+
+## ⚙️ Decisiones / Detalles Técnicos Importantes
+
+### Dockerfile del backend (problema resuelto en Sprint 1)
+- Base fijada a **`python:3.11-slim-bookworm`** (Debian 12). La `python:3.11-slim`
+  pura ahora resuelve a Debian 13 (trixie), que **eliminó `apt-key`** → la build
+  fallaba con `apt-key: not found` (exit 127).
+- Instalación del ODBC Driver 18 con método moderno:
+  `curl ... | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg` +
+  línea `deb [signed-by=...] .../debian/12/prod bookworm main` (NO `apt-key`).
+
+### Base de datos `DBAAssistant`
+- El contenedor de SQL Server **NO crea la base automáticamente**. Se creó a mano:
+  ```sql
+  IF DB_ID('DBAAssistant') IS NULL CREATE DATABASE DBAAssistant;
+  ```
+- Vive en el volumen `sqlserver_data`. Sobrevive a `restart` y `up/down`, pero
+  **se pierde con `docker-compose down -v`**.
+- 🔜 Pendiente: script de init automático para no depender del comando manual.
+
+### Health check
+- `app/services/db.py` define `check_sqlserver()`, `check_mongo()`,
+  `check_redis()`. Cada uno hace un ping y devuelve bool. Los errores se
+  **silencian** (try/except) → si algo falla, no aparece en logs; hay que probar
+  la conexión directa para depurar.
+
+### Tests
+- `pytest.ini` en la raíz define `pythonpath = backend` para que
+  `from app.main import app` funcione.
+- ❌ NO ejecutar `python conftest.py` (no es un script). Usar `python -m pytest`.
+- Los tests **mockean** los `check_*` con `unittest.mock.patch`, así corren sin
+  necesidad de las bases de datos reales (aptos para CI).
+
+### Comandos en Git Bash (Windows)
+- Al pasar rutas absolutas a `docker-compose exec` (p. ej. la ruta de `sqlcmd`),
+  Git Bash las convierte y rompe el comando. Prefijar con `MSYS_NO_PATHCONV=1`.
+- sqlcmd dentro del contenedor: `/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "<pwd>" -No -Q "..."`
+
+---
+
+## 🐞 Pendientes / Deuda Técnica (atender pronto)
+
+1. ~~`frontend/css/style.csv` → renombrar a `style.css`.~~ ✅ RESUELTO (2026-06-14).
+2. **`backend/env.example.txt` → renombrar a `.env.example`** (convención).
+3. ~~`.gitignore` que ignore `.env`, `__pycache__/`, `.pytest_cache/`.~~ ✅ RESUELTO
+   (2026-06-14). `.gitignore` creado; ambos `.env` verificados como ignorados y el
+   `.env` nunca llegó a trackearse en git.
+4. **Script de init de SQL Server** que cree la base `DBAAssistant` automáticamente.
+5. **Faltan `__init__.py`** en varios paquetes (funciona por namespace packages,
+   pero conviene añadirlos para evitar sorpresas).
+6. **Carpeta `nginx/`** creada pero sin configurar como reverse proxy del backend.
+7. **Login `sa`** se usa por simplicidad; crear usuario `DBAAssistant` con permisos
+   acotados es trabajo de Sprint 2 (seguridad).
+8. Warning inofensivo de pytest-asyncio (`asyncio_default_fixture_loop_scope` unset);
+   se puede silenciar en `pytest.ini` si molesta.
+
+---
+
+## ➡️ Próximos Pasos
+
+**Cierre de Sprint 2 (cuando haya tenant Auth0):**
+- Crear tenant + aplicación en auth0.com (plan free).
+- Rellenar `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_AUDIENCE` y poner
+  `AUTH_MODE=auth0` en el `.env`; recrear el backend.
+- Integrar el SDK de Auth0 en el frontend (login redirige a Auth0).
+
+**Sprint 3 (Chat & Claude API):**
+- Interfaz de chat (frontend) + WebSocket.
+- Integración Anthropic Claude API + prompt engineering.
+- Historial de chats en MongoDB.
+
+**Deuda de seguridad arrastrada:**
+- Persistir usuarios en SQL Server (hoy están en memoria).
+- Crear login `DBAAssistant` en SQL Server con permisos mínimos (hoy se usa `sa`).
 
 ---
 
 ## 📝 Estándares de Código
-
-### Python
-```python
-# Naming: snake_case
-def get_user_data():
-    pass
-
-# Imports: Organized (stdlib, third-party, local)
-import os
-from typing import List
-
-import fastapi
-from sqlalchemy import create_engine
-
-from app.models import User
-```
-
-- **Linter:** Black
-- **Type hints:** Sí (Pydantic)
-- **Docstrings:** Google style
-
-### JavaScript
-```javascript
-// Naming: camelCase for variables/functions
-function getUserData() {
-  // code
-}
-
-// Constants: UPPER_CASE
-const API_BASE_URL = 'http://localhost:8000';
-```
-
-- **Linter:** ESLint
-- **Format:** Prettier
-
-### Git Workflow
-- **Branches:** `feature/*, bugfix/*, hotfix/*`
-- **Commits:** Conventional Commits
-  - `feat: add new feature`
-  - `fix: correct bug`
-  - `docs: update documentation`
-  - `refactor: code improvement`
+- **Python:** snake_case, type hints (Pydantic), docstrings Google style,
+  formateo con Black. Imports ordenados (stdlib / third-party / local).
+- **JavaScript:** camelCase para variables/funciones, UPPER_CASE para constantes,
+  Prettier/ESLint.
+- **Git:** Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`).
+  Ramas: `feature/*`, `bugfix/*`, `hotfix/*`.
 
 ---
 
-## 🔗 Componentes Principales
-
-### 1. Chat Interface
-- Interfaz conversacional con Claude
-- Historial persistente
-- Validación de prompts
-
-### 2. SQL Generator
-- Genera SQL automáticos
-- Valida sintaxis
-- Preview antes de ejecutar
-
-### 3. Database Analyzer
-- Lectura de tablas, índices, esquemas
-- Estadísticas de rendimiento
-- Sugerencias de optimización
-
-### 4. Query Executor
-- Ejecución controlada
-- Transacciones
-- Logging de cambios
-
-### 5. Cache Layer
-- Redis para queries frecuentes
-- Invalidación automática
-
----
-
-## 🚀 Cómo Empezar (Local Development)
-
-```bash
-# 1. Clonar repositorio
-git clone https://github.com/mperezmo/DBAAssistant.git
-cd DBAAssistant
-
-# 2. Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus credenciales
-
-# 3. Levantar servicios
-docker-compose up -d
-
-# 4. Instalar dependencias backend
-cd backend
-pip install -r requirements.txt
-
-# 5. Ejecutar migraciones (si aplica)
-python -m alembic upgrade head
-
-# 6. Iniciar servidor backend
-uvicorn app.main:app --reload
-
-# 7. Abrir frontend
-# Abre http://localhost:3000 (o el puerto configurado)
-```
-
----
-
-## 📚 Referencias Importantes
-
-- **Documento Modelo:** `TFI_DBA_Assistant_PerezMoreno.pdf`
-- **Tu Proyecto:** `TFI_PEREZMORENO.pdf`
-- **Arquitectura Visual:** Imagen incluida en el repo
-
----
-
-## 🔄 Próximos Pasos
-
-1. **Llenar placeholders:** Actualizar este documento con detalles específicos
-2. **Crear issues:** Convertir sprints en issues de GitHub
-3. **Comenzar Sprint 1:** Setup inicial
-4. **Integración con Claude:** Para desarrollo automático
-
----
-
-## ✅ Checklist de Setup Inicial
-
-- [ ] Repositorio clonado
-- [ ] Docker instalado
-- [ ] Variables de entorno configuradas
-- [ ] SQL Server corriendo
-- [ ] MongoDB corriendo
-- [ ] Redis corriendo
-- [ ] Backend funciona en localhost:8000
-- [ ] Frontend funciona en localhost:3000
-- [ ] Auth0 configurado (opcional para dev)
-- [ ] Claude API key obtenida
-
----
-
-## 📞 Soporte
-
-Para preguntas sobre este proyecto, consulta la documentación en `/docs` o crea un issue en GitHub.
-
-**Última actualización:** 2026-06-07  
-**Versión:** 1.0.0 (Setup)
+## 📚 Referencias
+- Documento modelo: `TFI_DBA_Assistant_PerezMoreno.pdf`
+- Proyecto propio: `TFI_PEREZMORENO.pdf`

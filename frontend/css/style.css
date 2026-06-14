@@ -1,0 +1,25 @@
+/* frontend/css/style.css */
+:root { --ok: #16a34a; --bad: #dc2626; --bg: #0f172a; --card: #1e293b; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: #e2e8f0; }
+.container { max-width: 640px; margin: 0 auto; padding: 2rem; }
+.subtitle { color: #94a3b8; }
+.status-grid { display: grid; gap: .75rem; margin: 1.5rem 0; }
+.service { display: flex; justify-content: space-between; padding: 1rem;
+  background: var(--card); border-radius: 8px; }
+.badge { font-weight: 600; }
+.badge.ok { color: var(--ok); }
+.badge.bad { color: var(--bad); }
+button { padding: .6rem 1.2rem; border: 0; border-radius: 6px;
+  background: #2563eb; color: #fff; cursor: pointer; }
+button.secondary { background: #475569; }
+
+/* ── Login (Sprint 2) ── */
+.login-form { display: grid; gap: .75rem; max-width: 320px; margin: 1.5rem 0; }
+.login-form input { padding: .6rem .8rem; border-radius: 6px;
+  border: 1px solid #334155; background: var(--card); color: #e2e8f0; }
+.error { color: var(--bad); min-height: 1.2em; margin: .25rem 0 0; }
+.hint { color: #94a3b8; font-size: .9rem; }
+.hint code { background: var(--card); padding: .1rem .4rem; border-radius: 4px; }
+.topbar { display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1rem; }

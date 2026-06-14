@@ -4,11 +4,13 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (tag v0.2.0) · Sprint 3 🚧 en progreso
+> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (tag v0.2.0) · Sprint 3 ✅ (chat backend+frontend)
 >
-> Fix post-Sprint 2: `index.html` carga los JS con `?v=2` (cache-busting) para
-> evitar que el navegador sirva un `app.js` viejo y rompa por doble declaración
-> de `API_BASE_URL`.
+> **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
+> **React + Vite** (proyecto en `frontend/`, build multi-stage en Docker → nginx).
+> Se implementó el diseño de Claude Design (`design/DBA Assistant.html`): pantalla
+> de login (Auth0), shell (sidebar + topbar) y la página de Chat conectada al
+> backend. Login del frontend ahora es **Auth0** (`AUTH_MODE=auth0`).
 
 ---
 

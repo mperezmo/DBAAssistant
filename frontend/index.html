@@ -1,43 +1,15 @@
-<!-- frontend/index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DBA Assistant</title>
-  <link rel="stylesheet" href="css/style.css" />
+<meta charset="UTF-8">
+<title>DBA Assistant · Plataforma IA para administración de bases de datos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <main class="container">
-    <h1>DBA Assistant</h1>
-
-    <!-- Vista de Login -->
-    <section id="login-view" style="display:none">
-      <p class="subtitle">Inicia sesión para continuar</p>
-      <form id="login-form" class="login-form">
-        <input id="username" type="text" placeholder="Usuario"
-               autocomplete="username" required />
-        <input id="password" type="password" placeholder="Contraseña"
-               autocomplete="current-password" required />
-        <button type="submit">Entrar</button>
-        <p id="login-error" class="error"></p>
-      </form>
-      <p class="hint">Demo: <code>admin / admin123</code> · <code>dba / dba12345</code></p>
-    </section>
-
-    <!-- Vista de App (protegida) -->
-    <section id="app-view" style="display:none">
-      <div class="topbar">
-        <span id="user-info"></span>
-        <button id="logout-btn" class="secondary">Cerrar sesión</button>
-      </div>
-      <p class="subtitle">Estado de la infraestructura</p>
-      <div id="status" class="status-grid">Cargando…</div>
-      <button id="refresh">Actualizar</button>
-    </section>
-  </main>
-
-  <script src="js/auth.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+<div id="app"></div>
+<script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

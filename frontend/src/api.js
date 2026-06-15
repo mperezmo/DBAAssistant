@@ -41,3 +41,8 @@ export const getSchemaOverview = (token, conn) => authGet(token, `/schema/${conn
 export const getTables = (token, conn) => authGet(token, `/schema/${conn}/tables`);
 export const getTableDetail = (token, conn, schema, table) =>
   authGet(token, `/schema/${conn}/tables/${schema}/${table}`);
+
+// ── Performance por conexión (Sprint 4) ──
+export const getPerfMetrics = (token, conn) => authGet(token, `/performance/${conn}/metrics`);
+export const getActiveSessions = (token, conn) => authGet(token, `/performance/${conn}/sessions`);
+export const getTopQueries = (token, conn) => authGet(token, `/performance/${conn}/top-queries`);

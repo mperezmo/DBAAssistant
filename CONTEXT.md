@@ -35,6 +35,12 @@
 >   con TCP + login SQL habilitados y el puerto donde escuche (1433 si es default).
 > - `TARGET_SQL_*` en `.env` quedó como **legacy** (ya no se usa).
 > - `backend/scripts/seed_schema.sql`: esquema de ejemplo (para la BD `DBAAssistant`).
+> - **Análisis de performance** (`/performance/{connection_id}/*`): métricas vía DMVs
+>   (CPU% ring buffer, memoria %, sesiones, conexiones, bloqueos, locks), sesiones
+>   activas (`dm_exec_requests`) y top queries por CPU (`dm_exec_query_stats`).
+>   Página "Monitoreo" (gauges + counters + tablas, auto-refresh 10s) con
+>   **detección básica de anomalías** (resalta bloqueadas / CPU alta / long-running).
+>   Requiere que el login de la conexión tenga **VIEW SERVER STATE**.
 
 ---
 

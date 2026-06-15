@@ -10,7 +10,7 @@ function EnvPill({ env }) {
   );
 }
 
-const LABELS = { chat: 'Chat IA', schema: 'Esquema de BD', admin: 'Panel Admin' };
+const LABELS = { chat: 'Chat IA', schema: 'Esquema de BD', monitor: 'Monitoreo', admin: 'Panel Admin' };
 
 export default function Topbar({ active, env }) {
   return (

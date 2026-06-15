@@ -39,17 +39,46 @@ class Settings(BaseSettings):
     claude_model: str = "claude-3-5-sonnet-20241022"
     claude_max_tokens: int = 1024
 
+    # ── Conexión "target" para análisis (Sprint 4) ────────────
+    # SQL Server externo a analizar (p. ej. tu instancia local). Si
+    # target_sql_host está vacío, el análisis usa la conexión principal.
+    target_sql_host: str = ""
+    target_sql_port: int = 1433
+    target_sql_user: str = ""
+    target_sql_password: str = ""
+    target_sql_database: str = ""
+
     @property
     def cors_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
-    @property
-    def sqlserver_url(self) -> str:
+    @staticmethod
+    def _odbc_url(user: str, password: str, host: str, port: int, database: str) -> str:
         driver = "ODBC+Driver+18+for+SQL+Server"
         return (
-            f"mssql+pyodbc://{self.sql_server_user}:{self.sql_server_password}"
-            f"@{self.sql_server_host}:{self.sql_server_port}/{self.sql_server_database}"
+            f"mssql+pyodbc://{user}:{password}@{host}:{port}/{database}"
             f"?driver={driver}&TrustServerCertificate=yes"
+        )
+
+    @property
+    def sqlserver_url(self) -> str:
+        return self._odbc_url(
+            self.sql_server_user, self.sql_server_password,
+            self.sql_server_host, self.sql_server_port, self.sql_server_database,
+        )
+
+    @property
+    def has_target(self) -> bool:
+        return bool(self.target_sql_host)
+
+    @property
+    def target_sqlserver_url(self) -> str:
+        """URL del SQL Server a analizar. Si no hay target, usa el principal."""
+        if not self.has_target:
+            return self.sqlserver_url
+        return self._odbc_url(
+            self.target_sql_user, self.target_sql_password,
+            self.target_sql_host, self.target_sql_port, self.target_sql_database,
         )
 
 

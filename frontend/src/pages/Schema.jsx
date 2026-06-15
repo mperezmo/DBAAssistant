@@ -8,12 +8,17 @@ function fmtKb(kb) {
   return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
 }
 
-function StatCard({ label, value }) {
+function StatCard({ label, value, sub }) {
   return (
     <div className="card">
       <div className="card-body">
         <div className="card-eyebrow">{label}</div>
         <div className="metric-large">{value}</div>
+        {sub && (
+          <div className="metric-mono" style={{ fontSize: 11, color: 'var(--fg-faint)', marginTop: 6 }}>
+            {sub}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -78,7 +83,7 @@ export default function SchemaPage() {
       )}
 
       <div className="grid-3" style={{ marginBottom: 18 }}>
-        <StatCard label="Base de datos" value={overview?.database ?? '—'} />
+        <StatCard label="Base de datos" value={overview?.database ?? '—'} sub={overview?.server} />
         <StatCard label="Tablas" value={overview?.table_count ?? '—'} />
         <StatCard label="Tamaño total" value={overview ? fmtKb(overview.total_size_kb) : '—'} />
       </div>

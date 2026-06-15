@@ -18,6 +18,9 @@
 > **Sprint 4 (en curso):** introspección real de SQL Server (tablas, columnas,
 > índices, FKs) en `/schema/*`, página "Esquema de BD" en el frontend, y un
 > esquema de ejemplo sembrado (`backend/scripts/seed_schema.sql`).
+> El análisis usa una **conexión "target" configurable** (`TARGET_SQL_*` en `.env`)
+> para apuntar a un SQL Server externo (p. ej. la instancia local del usuario vía
+> `host.docker.internal`). Si `TARGET_SQL_HOST` está vacío, usa el SQL de Docker.
 
 ---
 

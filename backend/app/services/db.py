@@ -9,6 +9,9 @@ settings = get_settings()
 
 # Engines/clients se crean una vez (lazy en producción real, simple aquí)
 sql_engine = create_engine(settings.sqlserver_url, pool_pre_ping=True)
+# Motor "target": SQL Server a analizar (tu instancia local). Si no hay target
+# configurado, apunta a la misma conexión principal.
+target_engine = create_engine(settings.target_sqlserver_url, pool_pre_ping=True)
 mongo_client = MongoClient(settings.mongodb_uri, serverSelectionTimeoutMS=2000)
 redis_client = redis.from_url(settings.redis_url, socket_connect_timeout=2)
 

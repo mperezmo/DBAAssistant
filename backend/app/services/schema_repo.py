@@ -6,7 +6,7 @@ tablas, columnas, índices y claves foráneas. Solo lectura.
 """
 from sqlalchemy import text
 
-from app.services.db import sql_engine
+from app.services.db import target_engine
 
 _TABLES_SQL = """
 SELECT s.name AS schema_name,
@@ -61,7 +61,7 @@ ORDER BY fk.name
 
 
 def _rows(sql: str, params: dict | None = None) -> list[dict]:
-    with sql_engine.connect() as conn:
+    with target_engine.connect() as conn:
         result = conn.execute(text(sql), params or {})
         return [dict(r._mapping) for r in result]
 
@@ -74,8 +74,13 @@ def get_overview() -> dict:
              JOIN sys.partitions p ON a.container_id = p.partition_id
              JOIN sys.tables t ON p.object_id = t.object_id"""
     )[0]["kb"]
-    database = _rows("SELECT DB_NAME() AS d")[0]["d"]
-    return {"database": database, "table_count": int(table_count), "total_size_kb": int(size_kb)}
+    info = _rows("SELECT DB_NAME() AS d, CAST(@@SERVERNAME AS NVARCHAR(256)) AS s")[0]
+    return {
+        "server": info["s"],
+        "database": info["d"],
+        "table_count": int(table_count),
+        "total_size_kb": int(size_kb),
+    }
 
 
 def list_tables() -> list[dict]:

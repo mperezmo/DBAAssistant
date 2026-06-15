@@ -18,11 +18,13 @@ def test_tables_requires_auth(client):
 
 def test_overview_with_token(client):
     token = _token(client)
-    fake = {"database": "DBAAssistant", "table_count": 4, "total_size_kb": 576}
+    fake = {"server": "DBA-PC\\SQLEXPRESS", "database": "DBAAssistant",
+            "table_count": 4, "total_size_kb": 576}
     with patch("app.services.schema_repo.get_overview", return_value=fake):
         res = client.get("/schema/overview", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 200
     assert res.json()["table_count"] == 4
+    assert res.json()["server"] == "DBA-PC\\SQLEXPRESS"
 
 
 def test_tables_with_token(client):

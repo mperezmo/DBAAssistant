@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 
 class DatabaseOverview(BaseModel):
+    server: str
     database: str
     table_count: int
     total_size_kb: int

@@ -16,11 +16,21 @@
 > en esa API. El `AUTH0_CLIENT_ID` se incrusta en el build del frontend (build arg).
 >
 > **Sprint 4 (en curso):** introspección real de SQL Server (tablas, columnas,
-> índices, FKs) en `/schema/*`, página "Esquema de BD" en el frontend, y un
-> esquema de ejemplo sembrado (`backend/scripts/seed_schema.sql`).
-> El análisis usa una **conexión "target" configurable** (`TARGET_SQL_*` en `.env`)
-> para apuntar a un SQL Server externo (p. ej. la instancia local del usuario vía
-> `host.docker.internal`). Si `TARGET_SQL_HOST` está vacío, usa el SQL de Docker.
+> índices, FKs) y **gestor de conexiones dinámico**:
+> - **Panel Admin** (`/connections` CRUD): el usuario agrega/borra conexiones a
+>   instancias SQL Server (alias/host/puerto/usuario/password/base). Se guardan en
+>   MongoDB (colección `connections`). No hay BD por defecto.
+> - **Esquema de BD por conexión** (`/schema/{connection_id}/*`): analiza la
+>   conexión seleccionada. `connections_repo` cachea un engine por conexión.
+> - Frontend: páginas `Admin.jsx` (servicios + alta/baja/test de conexiones) y
+>   `Schema.jsx` (selector de conexión + overview/tablas/detalle). Conexión activa
+>   en `localStorage`.
+> - ⚠️ Las contraseñas se guardan en Mongo en texto plano (dev/TFI). En prod:
+>   cifrar / Azure Key Vault. La API nunca devuelve la contraseña.
+> - Para apuntar a la instancia local del usuario: host `host.docker.internal`,
+>   puerto distinto a 1433 (lo usa el SQL de Docker), TCP + login SQL habilitados.
+> - `TARGET_SQL_*` en `.env` quedó como **legacy** (ya no se usa).
+> - `backend/scripts/seed_schema.sql`: esquema de ejemplo (para la BD `DBAAssistant`).
 
 ---
 

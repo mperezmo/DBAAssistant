@@ -1,12 +1,11 @@
 # backend/app/services/schema_repo.py
 """Introspección de metadata de SQL Server (Sprint 4).
 
-Lee los catálogos del sistema (sys.*) de la base conectada para exponer
-tablas, columnas, índices y claves foráneas. Solo lectura.
+Opera sobre un engine de SQLAlchemy arbitrario (la conexión que el usuario
+seleccione). Lee los catálogos del sistema (sys.*). Solo lectura.
 """
 from sqlalchemy import text
-
-from app.services.db import target_engine
+from sqlalchemy.engine import Engine
 
 _TABLES_SQL = """
 SELECT s.name AS schema_name,
@@ -60,21 +59,22 @@ ORDER BY fk.name
 """
 
 
-def _rows(sql: str, params: dict | None = None) -> list[dict]:
-    with target_engine.connect() as conn:
+def _rows(engine: Engine, sql: str, params: dict | None = None) -> list[dict]:
+    with engine.connect() as conn:
         result = conn.execute(text(sql), params or {})
         return [dict(r._mapping) for r in result]
 
 
-def get_overview() -> dict:
-    table_count = _rows("SELECT COUNT(*) AS c FROM sys.tables")[0]["c"]
+def get_overview(engine: Engine) -> dict:
+    table_count = _rows(engine, "SELECT COUNT(*) AS c FROM sys.tables")[0]["c"]
     size_kb = _rows(
+        engine,
         """SELECT ISNULL(SUM(a.total_pages), 0) * 8 AS kb
              FROM sys.allocation_units a
              JOIN sys.partitions p ON a.container_id = p.partition_id
-             JOIN sys.tables t ON p.object_id = t.object_id"""
+             JOIN sys.tables t ON p.object_id = t.object_id""",
     )[0]["kb"]
-    info = _rows("SELECT DB_NAME() AS d, CAST(@@SERVERNAME AS NVARCHAR(256)) AS s")[0]
+    info = _rows(engine, "SELECT DB_NAME() AS d, CAST(@@SERVERNAME AS NVARCHAR(256)) AS s")[0]
     return {
         "server": info["s"],
         "database": info["d"],
@@ -83,19 +83,19 @@ def get_overview() -> dict:
     }
 
 
-def list_tables() -> list[dict]:
-    return _rows(_TABLES_SQL)
+def list_tables(engine: Engine) -> list[dict]:
+    return _rows(engine, _TABLES_SQL)
 
 
-def get_table_detail(schema_name: str, table_name: str) -> dict | None:
+def get_table_detail(engine: Engine, schema_name: str, table_name: str) -> dict | None:
     tbl = f"{schema_name}.{table_name}"
-    oid = _rows("SELECT OBJECT_ID(:t) AS oid", {"t": tbl})[0]["oid"]
+    oid = _rows(engine, "SELECT OBJECT_ID(:t) AS oid", {"t": tbl})[0]["oid"]
     if oid is None:
         return None
     return {
         "schema_name": schema_name,
         "table_name": table_name,
-        "columns": _rows(_COLUMNS_SQL, {"tbl": tbl}),
-        "indexes": _rows(_INDEXES_SQL, {"tbl": tbl}),
-        "foreign_keys": _rows(_FKS_SQL, {"tbl": tbl}),
+        "columns": _rows(engine, _COLUMNS_SQL, {"tbl": tbl}),
+        "indexes": _rows(engine, _INDEXES_SQL, {"tbl": tbl}),
+        "foreign_keys": _rows(engine, _FKS_SQL, {"tbl": tbl}),
     }

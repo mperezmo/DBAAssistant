@@ -5,13 +5,21 @@ import Topbar from './components/Topbar.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
 import ChatPage from './pages/Chat.jsx';
 import SchemaPage from './pages/Schema.jsx';
+import AdminPage from './pages/Admin.jsx';
 
-const PAGES = { chat: ChatPage, schema: SchemaPage };
+const PAGES = { chat: ChatPage, schema: SchemaPage, admin: AdminPage };
 
 export default function App() {
   const { isLoading, isAuthenticated, error } = useAuth0();
   const [page, setPage] = useState('chat');
   const [env] = useState('DEV');
+  const [connectionId, setConnectionId] = useState(() => localStorage.getItem('dba_conn') || null);
+
+  function selectConnection(id) {
+    setConnectionId(id);
+    if (id) localStorage.setItem('dba_conn', id);
+    else localStorage.removeItem('dba_conn');
+  }
 
   if (isLoading) {
     return (
@@ -41,7 +49,12 @@ export default function App() {
       <Sidebar active={page} onNav={setPage} />
       <main className="main">
         <Topbar active={page} env={env} />
-        <Page env={env} />
+        <Page
+          env={env}
+          connectionId={connectionId}
+          onSelectConnection={selectConnection}
+          goTo={setPage}
+        />
       </main>
     </div>
   );

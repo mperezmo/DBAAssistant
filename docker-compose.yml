@@ -7,7 +7,10 @@ services:
       MSSQL_SA_PASSWORD: "${SQL_SERVER_PASSWORD}"
       MSSQL_PID: "Developer"
     ports:
-      - "1433:1433"
+      # SQL propio del app publicado en 14330 (NO 1433): el 1433 del host queda
+      # libre para las instancias del usuario a monitorear. El backend usa este
+      # SQL por la red interna (sqlserver:1433), no por este puerto publicado.
+      - "14330:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
     healthcheck:

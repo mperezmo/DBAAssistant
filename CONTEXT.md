@@ -27,8 +27,12 @@
 >   en `localStorage`.
 > - ⚠️ Las contraseñas se guardan en Mongo en texto plano (dev/TFI). En prod:
 >   cifrar / Azure Key Vault. La API nunca devuelve la contraseña.
+> - **Puertos:** el SQL propio del app se publica en el host en **14330** (no 1433)
+>   para dejar el **1433 libre** a las instancias que el usuario agregue a
+>   monitorear. El backend usa el SQL del app por red interna (`sqlserver:1433`),
+>   no por el puerto publicado. Para SSMS contra el SQL del app: `localhost,14330`.
 > - Para apuntar a la instancia local del usuario: host `host.docker.internal`,
->   puerto distinto a 1433 (lo usa el SQL de Docker), TCP + login SQL habilitados.
+>   con TCP + login SQL habilitados y el puerto donde escuche (1433 si es default).
 > - `TARGET_SQL_*` en `.env` quedó como **legacy** (ya no se usa).
 > - `backend/scripts/seed_schema.sql`: esquema de ejemplo (para la BD `DBAAssistant`).
 

@@ -15,6 +15,20 @@ def list_connections(user: User = Depends(get_current_user)):
     return connections_repo.list_all()
 
 
+@router.get("/{connection_id}/databases", response_model=list[str])
+def list_databases(connection_id: str, user: User = Depends(get_current_user)):
+    try:
+        dbs = connections_repo.list_databases(connection_id)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"No se pudieron listar las bases: {exc}",
+        )
+    if dbs is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conexión no encontrada")
+    return dbs
+
+
 @router.post("", response_model=Connection, status_code=status.HTTP_201_CREATED)
 def create_connection(body: ConnectionCreate, user: User = Depends(get_current_user)):
     return connections_repo.create(body.model_dump())

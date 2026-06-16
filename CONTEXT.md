@@ -18,10 +18,15 @@
 > **Sprint 4 (en curso):** introspección real de SQL Server (tablas, columnas,
 > índices, FKs) y **gestor de conexiones dinámico**:
 > - **Panel Admin** (`/connections` CRUD): el usuario agrega/borra conexiones a
->   instancias SQL Server (alias/host/puerto/usuario/password/base). Se guardan en
->   MongoDB (colección `connections`). No hay BD por defecto.
-> - **Esquema de BD por conexión** (`/schema/{connection_id}/*`): analiza la
->   conexión seleccionada. `connections_repo` cachea un engine por conexión.
+>   **instancias** SQL Server (alias/host/puerto/usuario/password — SIN base; se
+>   conecta a `master`). Se guardan en MongoDB. No hay nada por defecto.
+> - **Descubrimiento de bases** (`/connections/{id}/databases`): lista las bases
+>   no-sistema y no-ReportServer (online) de la instancia.
+> - **Esquema de BD por instancia + base** (`/schema/{connection_id}/{database}/*`):
+>   en "Esquema de BD" se elige instancia y luego base; `connections_repo` cachea
+>   un engine por (conexión, base) y valida que la base sea una de las permitidas.
+> - **Monitoreo** es a nivel **instancia** (DMVs de servidor): el selector lista
+>   instancias, no bases (evita redundancia).
 > - Frontend: páginas `Admin.jsx` (servicios + alta/baja/test de conexiones) y
 >   `Schema.jsx` (selector de conexión + overview/tablas/detalle). Conexión activa
 >   en `localStorage`.

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../components/Icon.jsx';
-import { getConnections, getSchemaOverview, getTables, getTableDetail } from '../api.js';
+import { getConnections, getDatabases, getSchemaOverview, getTables, getTableDetail } from '../api.js';
 
 function fmtKb(kb) {
   if (kb == null) return '—';
@@ -14,17 +14,22 @@ function StatCard({ label, value, sub }) {
       <div className="card-body">
         <div className="card-eyebrow">{label}</div>
         <div className="metric-large">{value}</div>
-        {sub && (
-          <div className="metric-mono" style={{ fontSize: 11, color: 'var(--fg-faint)', marginTop: 6 }}>{sub}</div>
-        )}
+        {sub && <div className="metric-mono" style={{ fontSize: 11, color: 'var(--fg-faint)', marginTop: 6 }}>{sub}</div>}
       </div>
     </div>
   );
 }
 
+const selectStyle = {
+  padding: '7px 10px', borderRadius: 'var(--radius-sm)',
+  border: '1px solid var(--line-strong)', background: 'var(--bg-elev)', color: 'var(--fg)',
+};
+
 export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
   const { getAccessTokenSilently } = useAuth0();
   const [connections, setConnections] = useState([]);
+  const [databases, setDatabases] = useState([]);
+  const [database, setDatabase] = useState('');
   const [overview, setOverview] = useState(null);
   const [tables, setTables] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -38,14 +43,34 @@ export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
       try {
         const token = await getAccessTokenSilently();
         setConnections(await getConnections(token));
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
     })();
   }, [getAccessTokenSilently]);
 
+  // Al cambiar de instancia: descubrir sus bases y elegir la primera.
+  useEffect(() => {
+    setDatabase('');
+    setDatabases([]);
+    setOverview(null);
+    setTables([]);
+    setSelected(null);
+    setDetail(null);
+    if (!connectionId) return;
+    (async () => {
+      setError('');
+      try {
+        const token = await getAccessTokenSilently();
+        const dbs = await getDatabases(token, connectionId);
+        setDatabases(dbs);
+        if (dbs.length) setDatabase(dbs[0]);
+      } catch (e) {
+        setError(e.message);
+      }
+    })();
+  }, [connectionId, getAccessTokenSilently]);
+
   const loadSchema = useCallback(async () => {
-    if (!connectionId) {
+    if (!connectionId || !database) {
       setOverview(null);
       setTables([]);
       return;
@@ -57,8 +82,8 @@ export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
     try {
       const token = await getAccessTokenSilently();
       const [ov, tbs] = await Promise.all([
-        getSchemaOverview(token, connectionId),
-        getTables(token, connectionId),
+        getSchemaOverview(token, connectionId, database),
+        getTables(token, connectionId, database),
       ]);
       setOverview(ov);
       setTables(tbs);
@@ -69,7 +94,7 @@ export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
     } finally {
       setLoading(false);
     }
-  }, [getAccessTokenSilently, connectionId]);
+  }, [getAccessTokenSilently, connectionId, database]);
 
   useEffect(() => { loadSchema(); }, [loadSchema]);
 
@@ -80,7 +105,7 @@ export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
     setDetailLoading(true);
     try {
       const token = await getAccessTokenSilently();
-      setDetail(await getTableDetail(token, connectionId, t.schema_name, t.table_name));
+      setDetail(await getTableDetail(token, connectionId, database, t.schema_name, t.table_name));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -88,35 +113,36 @@ export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
     }
   }
 
+  const ready = connectionId && database;
+
   return (
     <div className="page" style={{ maxWidth: 1280, padding: '28px 32px 40px' }}>
       <div className="page-head">
         <div className="page-eyebrow">Análisis de BD · Metadata</div>
         <h1 className="page-title">Esquema de la <em>base de datos</em></h1>
-        <p className="page-subtitle">Tablas, columnas, índices y relaciones leídas en vivo desde la conexión seleccionada.</p>
+        <p className="page-subtitle">Elegí una instancia y una de sus bases para ver tablas, columnas, índices y relaciones.</p>
       </div>
 
-      {/* Selector de conexión */}
+      {/* Selectores: instancia + base */}
       <div className="row" style={{ marginBottom: 18, gap: 10, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>Conexión:</span>
-        <select
-          value={connectionId || ''}
-          onChange={(e) => onSelectConnection(e.target.value || null)}
-          style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line-strong)', background: 'var(--bg-elev)', color: 'var(--fg)' }}
-        >
-          <option value="">— Elegí una conexión —</option>
-          {connections.map((c) => (
-            <option key={c.id} value={c.id}>{c.name} ({c.database})</option>
-          ))}
+        <select value={connectionId || ''} onChange={(e) => onSelectConnection(e.target.value || null)} style={selectStyle}>
+          <option value="">— Elegí una instancia —</option>
+          {connections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <button className="btn btn-ghost btn-sm" onClick={() => goTo('admin')}>
-          <Icon name="settings" size={13} /> Gestionar
-        </button>
+
         {connectionId && (
-          <button className="btn btn-ghost btn-sm" onClick={loadSchema}>
-            <Icon name="refresh" size={13} /> Refrescar
-          </button>
+          <>
+            <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>Base:</span>
+            <select value={database} onChange={(e) => setDatabase(e.target.value)} style={selectStyle} disabled={databases.length === 0}>
+              {databases.length === 0 && <option value="">(sin bases)</option>}
+              {databases.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </>
         )}
+
+        <button className="btn btn-ghost btn-sm" onClick={() => goTo('admin')}><Icon name="settings" size={13} /> Gestionar</button>
+        {ready && <button className="btn btn-ghost btn-sm" onClick={loadSchema}><Icon name="refresh" size={13} /> Refrescar</button>}
       </div>
 
       {error && (
@@ -125,33 +151,26 @@ export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
         </div>
       )}
 
-      {/* Estado vacío: sin conexiones */}
       {connections.length === 0 && (
         <div className="card">
           <div className="card-body" style={{ textAlign: 'center', padding: '48px 16px' }}>
             <div style={{ marginBottom: 10 }}><Icon name="db" size={28} /></div>
             <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>No agregaste ninguna conexión</div>
-            <div style={{ color: 'var(--fg-muted)', fontSize: 13, marginBottom: 16 }}>
-              Agregá tu SQL Server en el Panel Admin para empezar a analizar su esquema.
-            </div>
-            <button className="btn btn-primary btn-sm" onClick={() => goTo('admin')}>
-              <Icon name="plus" size={13} /> Ir al Panel Admin
-            </button>
+            <div style={{ color: 'var(--fg-muted)', fontSize: 13, marginBottom: 16 }}>Agregá una instancia en el Panel Admin para empezar.</div>
+            <button className="btn btn-primary btn-sm" onClick={() => goTo('admin')}><Icon name="plus" size={13} /> Ir al Panel Admin</button>
           </div>
         </div>
       )}
 
-      {/* Hay conexiones pero ninguna elegida */}
       {connections.length > 0 && !connectionId && (
-        <div className="card">
-          <div className="card-body" style={{ color: 'var(--fg-muted)', fontSize: 13 }}>
-            Elegí una conexión en el selector de arriba para ver su esquema.
-          </div>
-        </div>
+        <div className="card"><div className="card-body" style={{ color: 'var(--fg-muted)', fontSize: 13 }}>Elegí una instancia en el selector de arriba.</div></div>
       )}
 
-      {/* Esquema de la conexión activa */}
-      {connectionId && (
+      {connectionId && databases.length === 0 && !error && (
+        <div className="card"><div className="card-body" style={{ color: 'var(--fg-muted)', fontSize: 13 }}>La instancia no tiene bases analizables (solo sistema/ReportServer).</div></div>
+      )}
+
+      {ready && (
         <>
           <div className="grid-3" style={{ marginBottom: 18 }}>
             <StatCard label="Base de datos" value={overview?.database ?? '—'} sub={overview?.server} />

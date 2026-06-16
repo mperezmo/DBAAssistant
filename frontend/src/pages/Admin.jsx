@@ -22,7 +22,7 @@ function ServiceCard({ name, ok }) {
   );
 }
 
-const EMPTY = { name: '', host: 'host.docker.internal', port: 1433, username: '', password: '', database: '' };
+const EMPTY = { name: '', host: 'host.docker.internal', port: 1433, username: '', password: '' };
 
 export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
   const { getAccessTokenSilently } = useAuth0();
@@ -106,7 +106,7 @@ export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
     { name: 'Redis', ok: health?.services?.redis },
   ];
 
-  const canSave = form.name && form.host && form.username && form.database;
+  const canSave = form.name && form.host && form.username;
 
   return (
     <div className="page" style={{ maxWidth: 1280, padding: '28px 32px 40px' }}>
@@ -145,7 +145,9 @@ export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
               <div className="field"><label>Puerto</label><input value={form.port} onChange={(e) => upd('port', e.target.value)} placeholder="1433" /></div>
               <div className="field"><label>Usuario</label><input value={form.username} onChange={(e) => upd('username', e.target.value)} placeholder="sa" /></div>
               <div className="field"><label>Contraseña</label><input type="password" value={form.password} onChange={(e) => upd('password', e.target.value)} /></div>
-              <div className="field"><label>Base de datos</label><input value={form.database} onChange={(e) => upd('database', e.target.value)} placeholder="Ventas" /></div>
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--fg-faint)', marginTop: 4, marginBottom: 10 }}>
+              La conexión es a la <strong>instancia</strong>. La base a analizar se elige luego en "Esquema de BD".
             </div>
             {testResult && (
               <div className={`tag ${testResult.ok ? 'tag-green' : 'tag-red'}`} style={{ display: 'inline-flex', marginBottom: 10 }}>
@@ -165,17 +167,16 @@ export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
 
         <table className="data-table">
           <thead>
-            <tr><th>Alias</th><th>Host</th><th>Base</th><th>Usuario</th><th>Estado</th><th></th></tr>
+            <tr><th>Alias</th><th>Host</th><th>Usuario</th><th>Estado</th><th></th></tr>
           </thead>
           <tbody>
             {conns.length === 0 && (
-              <tr><td colSpan={6} style={{ color: 'var(--fg-faint)' }}>No hay conexiones. Agregá una con "Nueva conexión".</td></tr>
+              <tr><td colSpan={5} style={{ color: 'var(--fg-faint)' }}>No hay conexiones. Agregá una con "Nueva conexión".</td></tr>
             )}
             {conns.map((c) => (
               <tr key={c.id}>
                 <td className="metric-mono" style={{ fontWeight: 600 }}>{c.name}</td>
                 <td className="metric-mono" style={{ fontSize: 11.5, color: 'var(--fg-muted)' }}>{c.host}:{c.port}</td>
-                <td>{c.database}</td>
                 <td className="metric-mono" style={{ fontSize: 12 }}>{c.username}</td>
                 <td>{connectionId === c.id ? <span className="tag tag-blue">activa</span> : <span className="tag">—</span>}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>

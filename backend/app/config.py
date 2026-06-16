@@ -1,5 +1,7 @@
 # backend/app/config.py
 from functools import lru_cache
+from urllib.parse import quote
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -55,8 +57,9 @@ class Settings(BaseSettings):
     @staticmethod
     def _odbc_url(user: str, password: str, host: str, port: int, database: str) -> str:
         driver = "ODBC+Driver+18+for+SQL+Server"
+        u, p, d = quote(str(user), safe=""), quote(str(password), safe=""), quote(str(database), safe="")
         return (
-            f"mssql+pyodbc://{user}:{password}@{host}:{port}/{database}"
+            f"mssql+pyodbc://{u}:{p}@{host}:{port}/{d}"
             f"?driver={driver}&TrustServerCertificate=yes"
         )
 

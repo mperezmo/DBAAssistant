@@ -94,7 +94,7 @@ export default function MonitorPage({ connectionId, onSelectConnection, goTo }) 
           style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line-strong)', background: 'var(--bg-elev)', color: 'var(--fg)' }}
         >
           <option value="">— Elegí una conexión —</option>
-          {connections.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.database})</option>)}
+          {connections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <button className="btn btn-ghost btn-sm" onClick={() => goTo('admin')}><Icon name="settings" size={13} /> Gestionar</button>
         {connectionId && <button className="btn btn-ghost btn-sm" onClick={load}><Icon name="refresh" size={13} /> Refrescar</button>}

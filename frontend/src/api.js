@@ -30,17 +30,19 @@ export function sendChat(token, message, conversationId) {
   return authSend(token, 'POST', '/chat', { message, conversation_id: conversationId || null });
 }
 
-// ── Conexiones (Sprint 4) ──
+// ── Conexiones = instancias (Sprint 4) ──
 export const getConnections = (token) => authGet(token, '/connections');
 export const createConnection = (token, body) => authSend(token, 'POST', '/connections', body);
 export const testConnection = (token, body) => authSend(token, 'POST', '/connections/test', body);
 export const deleteConnection = (token, id) => authSend(token, 'DELETE', `/connections/${id}`);
+export const getDatabases = (token, conn) => authGet(token, `/connections/${conn}/databases`);
 
-// ── Esquema por conexión (Sprint 4) ──
-export const getSchemaOverview = (token, conn) => authGet(token, `/schema/${conn}/overview`);
-export const getTables = (token, conn) => authGet(token, `/schema/${conn}/tables`);
-export const getTableDetail = (token, conn, schema, table) =>
-  authGet(token, `/schema/${conn}/tables/${schema}/${table}`);
+// ── Esquema por conexión + base (Sprint 4) ──
+const e = encodeURIComponent;
+export const getSchemaOverview = (token, conn, db) => authGet(token, `/schema/${conn}/${e(db)}/overview`);
+export const getTables = (token, conn, db) => authGet(token, `/schema/${conn}/${e(db)}/tables`);
+export const getTableDetail = (token, conn, db, schema, table) =>
+  authGet(token, `/schema/${conn}/${e(db)}/tables/${e(schema)}/${e(table)}`);
 
 // ── Performance por conexión (Sprint 4) ──
 export const getPerfMetrics = (token, conn) => authGet(token, `/performance/${conn}/metrics`);

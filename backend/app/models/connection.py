@@ -1,5 +1,9 @@
 # backend/app/models/connection.py
-"""Modelos de conexiones a SQL Server gestionadas por el usuario (Sprint 4)."""
+"""Modelos de conexiones a INSTANCIAS de SQL Server (Sprint 4).
+
+Una conexión apunta a una instancia (host/puerto/credenciales), no a una base
+puntual. La base a analizar se elige aparte (en Esquema de BD).
+"""
 from pydantic import BaseModel
 
 
@@ -9,7 +13,6 @@ class ConnectionCreate(BaseModel):
     port: int = 1433
     username: str
     password: str
-    database: str
 
 
 class Connection(BaseModel):
@@ -19,7 +22,6 @@ class Connection(BaseModel):
     host: str
     port: int
     username: str
-    database: str
 
 
 class ConnectionTestResult(BaseModel):

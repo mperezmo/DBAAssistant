@@ -1,11 +1,11 @@
 # backend/app/routes/schema.py
 """Análisis de metadata/esquema POR CONEXIÓN Y BASE (Sprint 4). Protegido por auth."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.dependencies import get_current_user
 from app.models.auth import User
 from app.models.schema import DatabaseOverview, TableDetail, TableSummary
-from app.services import connections_repo, schema_repo
+from app.services import audit_repo, connections_repo, schema_repo
 
 router = APIRouter(prefix="/schema", tags=["schema"])
 
@@ -32,12 +32,15 @@ def _engine_for(connection_id: str, database: str):
 
 
 @router.get("/{connection_id}/{database}/overview", response_model=DatabaseOverview)
-def overview(connection_id: str, database: str, user: User = Depends(get_current_user)):
+def overview(connection_id: str, database: str, request: Request, user: User = Depends(get_current_user)):
     engine = _engine_for(connection_id, database)
     try:
-        return schema_repo.get_overview(engine)
+        result = schema_repo.get_overview(engine)
     except Exception as exc:  # noqa: BLE001
         raise _read_error(exc)
+    audit_repo.log(user.email or user.username, "schema.view", target=f"{connection_id}/{database}",
+                   ip=request.client.host if request.client else None)
+    return result
 
 
 @router.get("/{connection_id}/{database}/tables", response_model=list[TableSummary])

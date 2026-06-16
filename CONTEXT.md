@@ -4,7 +4,7 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (v0.2.0) · Sprint 3 ✅ · Sprint 4 🚧 (metadata/esquema)
+> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (v0.2.0) · Sprint 3 ✅ · Sprint 4 ✅ (completo)
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
 > **React + Vite** (proyecto en `frontend/`, build multi-stage en Docker → nginx).
@@ -46,6 +46,11 @@
 >   Página "Monitoreo" (gauges + counters + tablas, auto-refresh 10s) con
 >   **detección básica de anomalías** (resalta bloqueadas / CPU alta / long-running).
 >   Requiere que el login de la conexión tenga **VIEW SERVER STATE**.
+> - **Auditoría** (`/audit`): bitácora en MongoDB (colección `audit_log`) con
+>   quién/qué/cuándo/IP. Se registran `connection.create`, `connection.delete` y
+>   `schema.view`. Página "Auditoría" con tabla filtrable. `audit_repo.log()` es
+>   tolerante a fallos (auditar nunca rompe la acción). Diseñado para extenderse
+>   en Sprint 5 (p. ej. `query.execute`).
 
 ---
 
@@ -69,7 +74,7 @@ recomendaciones de optimización.
 | **1** | Fundamentos e Infraestructura | ✅ **COMPLETADO** |
 | **2** | Autenticación y Seguridad (Auth0 + JWT) | ✅ **COMPLETADO** (modo local; Auth0 listo a falta de tenant) |
 | 3 | Chat & Claude API | ⬜ Pendiente |
-| 4 | Análisis de BD (metadata SQL Server) | ⬜ Pendiente |
+| **4** | Análisis de BD (metadata, performance, anomalías, auditoría) | ✅ **COMPLETADO** |
 | 5 | Generación y Ejecución SQL | ⬜ Pendiente |
 | 6 | Cache & Optimización (Redis) | ⬜ Pendiente |
 | 7 | DevOps & Deployment (CI/CD, Azure) | ⬜ Pendiente |

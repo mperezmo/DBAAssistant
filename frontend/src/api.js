@@ -48,3 +48,6 @@ export const getTableDetail = (token, conn, db, schema, table) =>
 export const getPerfMetrics = (token, conn) => authGet(token, `/performance/${conn}/metrics`);
 export const getActiveSessions = (token, conn) => authGet(token, `/performance/${conn}/sessions`);
 export const getTopQueries = (token, conn) => authGet(token, `/performance/${conn}/top-queries`);
+
+// ── Auditoría (Sprint 4) ──
+export const getAudit = (token) => authGet(token, '/audit?limit=200');

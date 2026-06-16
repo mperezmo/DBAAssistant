@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routes import auth, chat, connections, health, performance, schema
+from app.routes import audit, auth, chat, connections, health, performance, schema
 
 settings = get_settings()
 
@@ -23,6 +23,7 @@ app.include_router(chat.router)
 app.include_router(connections.router)
 app.include_router(schema.router)
 app.include_router(performance.router)
+app.include_router(audit.router)
 
 
 @app.get("/")

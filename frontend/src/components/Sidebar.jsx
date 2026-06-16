@@ -21,8 +21,8 @@ const NAV_ITEMS = [
   ]},
 ];
 
-// Sprint 3: Chat IA · Sprint 4: Esquema de BD + Monitoreo + Panel Admin.
-const ENABLED = new Set(['chat', 'schema', 'monitor', 'admin']);
+// Sprint 3: Chat IA · Sprint 4: Esquema, Monitoreo, Auditoría, Panel Admin.
+const ENABLED = new Set(['chat', 'schema', 'monitor', 'audit', 'admin']);
 
 function initialsOf(name) {
   const parts = (name || 'Usuario').trim().split(/\s+/).slice(0, 2);

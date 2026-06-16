@@ -7,8 +7,11 @@ import ChatPage from './pages/Chat.jsx';
 import SchemaPage from './pages/Schema.jsx';
 import AdminPage from './pages/Admin.jsx';
 import MonitorPage from './pages/Monitor.jsx';
+import AuditPage from './pages/Audit.jsx';
 
-const PAGES = { chat: ChatPage, schema: SchemaPage, admin: AdminPage, monitor: MonitorPage };
+const PAGES = {
+  chat: ChatPage, schema: SchemaPage, admin: AdminPage, monitor: MonitorPage, audit: AuditPage,
+};
 
 export default function App() {
   const { isLoading, isAuthenticated, error } = useAuth0();

@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    name: Backend · pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install ODBC headers (para pyodbc)
+        run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run tests
+        # Valores dummy: los tests mockean las conexiones (no se conecta a nada real).
+        env:
+          SQL_SERVER_HOST: localhost
+          SQL_SERVER_USER: sa
+          SQL_SERVER_PASSWORD: dummyPass1!
+          SQL_SERVER_DATABASE: dummy
+          MONGODB_URI: mongodb://localhost:27017
+          MONGODB_DATABASE: dummy
+          REDIS_URL: redis://localhost:6379/0
+          AUTH_MODE: local
+          SECRET_KEY: ci-test-secret
+        run: python -m pytest -q
+
+  frontend-build:
+    name: Frontend · Vite build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+
+  docker-build:
+    name: Docker · build images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t dba-assistant-backend ./backend
+
+      - name: Build frontend image
+        run: |
+          docker build -t dba-assistant-frontend \
+            --build-arg VITE_API_BASE_URL=http://localhost:8000 \
+            --build-arg VITE_AUTH0_DOMAIN=example.us.auth0.com \
+            --build-arg VITE_AUTH0_CLIENT_ID=dummy \
+            --build-arg VITE_AUTH0_AUDIENCE=https://dba-assistant-api \
+            ./frontend

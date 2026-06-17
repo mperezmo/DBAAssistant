@@ -4,7 +4,7 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprint 1-6 ✅ (v0.5.0 = Sprint 5; Sprint 6 completo: caché + optimización)
+> **Estado actual:** Sprint 1-6 ✅ (último tag v0.6.0) · Sprint 7 🚧 (CI/CD)
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
 > **React + Vite** (proyecto en `frontend/`, build multi-stage en Docker → nginx).
@@ -76,6 +76,14 @@
 >   índices faltantes (`sys.dm_db_missing_index_*`) con CREATE sugerido, e índices
 >   sin uso (`sys.dm_db_index_usage_stats`) con DROP sugerido. Página "Optimización"
 >   (Operaciones) con copiar al portapapeles. Requiere VIEW SERVER STATE.
+>
+> **Sprint 7 (en curso) — CI/CD:**
+> - `.github/workflows/ci.yml`: corre en push/PR a `main`. 3 jobs:
+>   `backend-tests` (pytest con env dummy; instala unixodbc-dev para pyodbc),
+>   `frontend-build` (npm ci + vite build), `docker-build` (build de ambas
+>   imágenes para validar los Dockerfiles).
+> - Falta de Sprint 7: **CD** (push de imágenes a un registry) y **deploy a Azure**
+>   (App Service / Container Apps), que requiere credenciales del usuario.
 
 ---
 
@@ -102,7 +110,7 @@ recomendaciones de optimización.
 | **4** | Análisis de BD (metadata, performance, anomalías, auditoría) | ✅ **COMPLETADO** |
 | **5** | Generación y Ejecución SQL | ✅ **COMPLETADO** (v0.5.0) |
 | **6** | Cache & Optimización (Redis) | ✅ **COMPLETADO** (caché + stats + optimización de índices) |
-| 7 | DevOps & Deployment (CI/CD, Azure) | ⬜ Pendiente |
+| **7** | DevOps & Deployment (CI/CD, Azure) | 🚧 En progreso (CI con GitHub Actions; falta CD/Azure) |
 | 8 | Testing & Docs | ⬜ Pendiente |
 
 ---

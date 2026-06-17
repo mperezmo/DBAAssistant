@@ -4,7 +4,7 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprint 1 ✅ · Sprint 2 ✅ (v0.2.0) · Sprint 3 ✅ · Sprint 4 ✅ (completo)
+> **Estado actual:** Sprint 1-4 ✅ (Sprint 4 = v0.4.0) · Sprint 5 🚧 (SQL sandbox)
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
 > **React + Vite** (proyecto en `frontend/`, build multi-stage en Docker → nginx).
@@ -51,6 +51,17 @@
 >   `schema.view`. Página "Auditoría" con tabla filtrable. `audit_repo.log()` es
 >   tolerante a fallos (auditar nunca rompe la acción). Diseñado para extenderse
 >   en Sprint 5 (p. ej. `query.execute`).
+>
+> **Sprint 5 (en curso) — generación y ejecución de SQL (página Sandbox):**
+> - `POST /sql/generate`: NL→T-SQL con Claude (usa los nombres de tablas de la
+>   base como contexto). Requiere ANTHROPIC_API_KEY.
+> - `POST /sql/execute`: ejecución CONTROLADA. SELECT solo lectura (máx 1000 filas).
+>   Escrituras/DDL: `mode=preview` (transacción + ROLLBACK, informa filas afectadas)
+>   o `mode=apply` (transacción + COMMIT). Validación heurística (DELETE/UPDATE sin
+>   WHERE, DROP/TRUNCATE) → warnings.
+> - `GET /sql/history`: historial en MongoDB (`query_history`). Cada ejecución se
+>   audita como `query.execute`. Servicios: `sql_validator`, `sql_executor`,
+>   `query_history_repo`.
 
 ---
 
@@ -75,7 +86,7 @@ recomendaciones de optimización.
 | **2** | Autenticación y Seguridad (Auth0 + JWT) | ✅ **COMPLETADO** (modo local; Auth0 listo a falta de tenant) |
 | 3 | Chat & Claude API | ⬜ Pendiente |
 | **4** | Análisis de BD (metadata, performance, anomalías, auditoría) | ✅ **COMPLETADO** |
-| 5 | Generación y Ejecución SQL | ⬜ Pendiente |
+| **5** | Generación y Ejecución SQL | 🚧 En progreso (sandbox: NL→SQL, ejecución controlada, historial) |
 | 6 | Cache & Optimización (Redis) | ⬜ Pendiente |
 | 7 | DevOps & Deployment (CI/CD, Azure) | ⬜ Pendiente |
 | 8 | Testing & Docs | ⬜ Pendiente |

@@ -7,12 +7,14 @@ const LABELS = {
   'connection.create': 'Alta conexión',
   'connection.delete': 'Baja conexión',
   'schema.view': 'Ver esquema',
+  'query.execute': 'Ejecutar SQL',
 };
 
 const FILTERS = [
   { id: 'all', label: 'Todo', match: () => true },
   { id: 'conn', label: 'Conexiones', match: (a) => a.startsWith('connection.') },
   { id: 'schema', label: 'Esquema', match: (a) => a.startsWith('schema.') },
+  { id: 'sql', label: 'SQL', match: (a) => a.startsWith('query.') },
 ];
 
 export default function AuditPage() {

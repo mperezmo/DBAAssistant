@@ -8,9 +8,11 @@ import SchemaPage from './pages/Schema.jsx';
 import AdminPage from './pages/Admin.jsx';
 import MonitorPage from './pages/Monitor.jsx';
 import AuditPage from './pages/Audit.jsx';
+import SandboxPage from './pages/Sandbox.jsx';
 
 const PAGES = {
-  chat: ChatPage, schema: SchemaPage, admin: AdminPage, monitor: MonitorPage, audit: AuditPage,
+  chat: ChatPage, schema: SchemaPage, admin: AdminPage, monitor: MonitorPage,
+  audit: AuditPage, sandbox: SandboxPage,
 };
 
 export default function App() {

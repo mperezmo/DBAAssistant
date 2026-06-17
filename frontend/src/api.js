@@ -51,3 +51,8 @@ export const getTopQueries = (token, conn) => authGet(token, `/performance/${con
 
 // ── Auditoría (Sprint 4) ──
 export const getAudit = (token) => authGet(token, '/audit?limit=200');
+
+// ── SQL: generación y ejecución (Sprint 5) ──
+export const generateSql = (token, body) => authSend(token, 'POST', '/sql/generate', body);
+export const executeSql = (token, body) => authSend(token, 'POST', '/sql/execute', body);
+export const getQueryHistory = (token) => authGet(token, '/sql/history?limit=50');

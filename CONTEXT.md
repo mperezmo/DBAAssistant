@@ -77,13 +77,22 @@
 >   sin uso (`sys.dm_db_index_usage_stats`) con DROP sugerido. Página "Optimización"
 >   (Operaciones) con copiar al portapapeles. Requiere VIEW SERVER STATE.
 >
-> **Sprint 7 (en curso) — CI/CD:**
-> - `.github/workflows/ci.yml`: corre en push/PR a `main`. 3 jobs:
->   `backend-tests` (pytest con env dummy; instala unixodbc-dev para pyodbc),
->   `frontend-build` (npm ci + vite build), `docker-build` (build de ambas
->   imágenes para validar los Dockerfiles).
-> - Falta de Sprint 7: **CD** (push de imágenes a un registry) y **deploy a Azure**
->   (App Service / Container Apps), que requiere credenciales del usuario.
+> **Sprint 7 — DevOps & estructura de producción (lista para configurar):**
+> - CI `.github/workflows/ci.yml` (push/PR a main): pytest + build frontend + build
+>   de imágenes. **Pasa en verde.**
+> - CD `.github/workflows/release.yml` (tags `v*`): publica imágenes backend/frontend
+>   a **GHCR** (usa `GITHUB_TOKEN`, sin secretos externos).
+> - `deploy-azure.yml` (manual `workflow_dispatch`): **scaffold** de deploy a Azure
+>   Container Apps; corre cuando cargás `AZURE_CREDENTIALS` + variables y lo disparás.
+> - Producción self-host: `docker-compose.prod.yml` (workers, sin reload, bases sin
+>   puertos) + **reverse proxy** `nginx/nginx.conf` (`/`→front, `/api/`→backend).
+>   Backend soporta `ROOT_PATH=/api`.
+> - Secretos: `.env.production.example` con todos los placeholders +
+>   **Azure Key Vault** opcional (`app/keyvault.py`, no-op sin `AZURE_VAULT_URL`;
+>   deps en `backend/requirements-azure.txt`).
+> - Guía completa de qué configurar: **`docs/DEPLOYMENT.md`**.
+> - Pendiente del usuario (configurar): credenciales Azure, secrets/vars de GitHub,
+>   `.env.production` o Key Vault, recursos gestionados (Azure SQL/Cosmos/Redis).
 
 ---
 

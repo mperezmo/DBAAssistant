@@ -1,0 +1,55 @@
+name: Deploy to Azure (manual)
+
+# SCAFFOLD listo para producción. Se dispara MANUALMENTE (workflow_dispatch),
+# así que no corre hasta que cargues los secretos y lo ejecutes a propósito.
+#
+# Requisitos a configurar en el repo (Settings → Secrets and variables → Actions):
+#   Secrets:
+#     AZURE_CREDENTIALS   → JSON del service principal:
+#                           az ad sp create-for-rbac --name dba-assistant \
+#                             --role contributor \
+#                             --scopes /subscriptions/<SUB_ID>/resourceGroups/<RG> \
+#                             --sdk-auth
+#   Variables:
+#     AZURE_RESOURCE_GROUP        ej. rg-dba-assistant
+#     AZURE_BACKEND_APP           ej. dba-assistant-backend  (Azure Container App)
+#     AZURE_FRONTEND_APP          ej. dba-assistant-frontend (Azure Container App)
+#
+# Las imágenes deben existir en GHCR (las publica release.yml en cada tag).
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Tag de imagen a desplegar (ej. v0.6.0 o latest)"
+        required: true
+        default: "latest"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy backend (Azure Container Apps)
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+          containerAppName: ${{ vars.AZURE_BACKEND_APP }}
+          imageToDeploy: ghcr.io/mperezmo/dbaassistant-backend:${{ inputs.image_tag }}
+          targetPort: 8000
+          # TODO: las variables de entorno/secretos del backend se gestionan en el
+          # Container App (o vía Key Vault references). Ver docs/DEPLOYMENT.md.
+
+      - name: Deploy frontend (Azure Container Apps)
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+          containerAppName: ${{ vars.AZURE_FRONTEND_APP }}
+          imageToDeploy: ghcr.io/mperezmo/dbaassistant-frontend:${{ inputs.image_tag }}
+          targetPort: 80

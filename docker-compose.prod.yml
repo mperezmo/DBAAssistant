@@ -1,0 +1,74 @@
+# docker-compose.prod.yml — stack de producción / staging (self-hosted).
+#
+# Diferencias con el de desarrollo:
+#   - Sin montajes de código fuente ni --reload.
+#   - Backend con múltiples workers de Uvicorn.
+#   - Un reverse proxy nginx es el ÚNICO puerto público (80/443).
+#   - Las bases NO publican puertos al host.
+#   - Variables desde .env.production (copiá .env.production.example).
+#
+# En producción real en Azure se recomienda usar servicios GESTIONADOS
+# (Azure SQL, Cosmos DB for MongoDB, Azure Cache for Redis) y apuntar el backend
+# a ellos vía .env.production, quitando estos contenedores de datos.
+#
+# Uso:
+#   cp .env.production.example .env.production   # y completá los valores
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SQL_SERVER_PASSWORD}"
+      MSSQL_PID: "Developer"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  backend:
+    # En CD se usa la imagen publicada; localmente se puede buildear.
+    image: ${BACKEND_IMAGE:-ghcr.io/mperezmo/dbaassistant-backend:latest}
+    build: ./backend
+    env_file: .env.production
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    depends_on: [sqlserver, mongo, redis]
+    restart: unless-stopped
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/mperezmo/dbaassistant-frontend:latest}
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: "/api"
+        VITE_AUTH0_DOMAIN: "${AUTH0_DOMAIN}"
+        VITE_AUTH0_CLIENT_ID: "${AUTH0_CLIENT_ID}"
+        VITE_AUTH0_AUDIENCE: "${AUTH0_AUDIENCE}"
+    restart: unless-stopped
+
+  proxy:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      # - "443:443"   # habilitar con TLS (certificados montados)
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [frontend, backend]
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+  mongo_data:
+  redis_data:

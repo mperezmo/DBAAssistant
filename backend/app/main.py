@@ -9,7 +9,11 @@ from app.routes import (
 
 settings = get_settings()
 
-app = FastAPI(title=settings.app_name, version=settings.app_version)
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+    root_path=settings.root_path,  # "/api" detrás del reverse proxy en producción
+)
 
 app.add_middleware(
     CORSMiddleware,

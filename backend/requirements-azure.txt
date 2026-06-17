@@ -1,0 +1,4 @@
+# Dependencias OPCIONALES para producción en Azure (Key Vault).
+# Instalar solo si vas a usar Azure Key Vault:  pip install -r requirements-azure.txt
+azure-identity==1.19.0
+azure-keyvault-secrets==4.9.0

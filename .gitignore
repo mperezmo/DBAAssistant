@@ -1,10 +1,14 @@
 # ── Secretos / Entorno ─────────────────────────
-# NUNCA subir .env: contiene la contraseña de SA y futuras API keys
+# NUNCA subir archivos .env reales (SA password, API keys, secretos de prod)
 .env
+.env.*
 *.env
-!*.env.example
-!env.example.txt
 backend/.env
+# ...pero SÍ versionar las plantillas de ejemplo:
+!.env.example
+!*.env.example
+!.env.production.example
+!env.example.txt
 
 # ── Python ─────────────────────────────────────
 __pycache__/

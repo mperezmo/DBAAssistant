@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     debug: bool = True
     environment: str = "development"
     cors_origins: str = "http://localhost:3000"
+    # Prefijo cuando corre detrás de un reverse proxy (ej. "/api" en producción)
+    root_path: str = ""
 
     sql_server_host: str
     sql_server_port: int = 1433
@@ -87,4 +89,9 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    # Producción opcional: hidrata el entorno desde Azure Key Vault si está
+    # configurado (AZURE_VAULT_URL). No-op en desarrollo.
+    from app.keyvault import load_secrets
+
+    load_secrets()
     return Settings()

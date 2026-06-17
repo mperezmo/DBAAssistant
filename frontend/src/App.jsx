@@ -9,10 +9,11 @@ import AdminPage from './pages/Admin.jsx';
 import MonitorPage from './pages/Monitor.jsx';
 import AuditPage from './pages/Audit.jsx';
 import SandboxPage from './pages/Sandbox.jsx';
+import OptimizePage from './pages/Optimize.jsx';
 
 const PAGES = {
   chat: ChatPage, schema: SchemaPage, admin: AdminPage, monitor: MonitorPage,
-  audit: AuditPage, sandbox: SandboxPage,
+  audit: AuditPage, sandbox: SandboxPage, optimize: OptimizePage,
 };
 
 export default function App() {

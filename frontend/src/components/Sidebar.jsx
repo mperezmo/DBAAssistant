@@ -10,6 +10,7 @@ const NAV_ITEMS = [
     { id: 'alerts', label: 'Alertas', icon: 'bell' },
     { id: 'workarounds', label: 'Workarounds', icon: 'play' },
     { id: 'sandbox', label: 'Sandbox', icon: 'sandbox' },
+    { id: 'optimize', label: 'Optimización', icon: 'cpu' },
   ]},
   { section: 'Conocimiento', items: [
     { id: 'context', label: 'Contexto de Negocio', icon: 'book' },
@@ -22,7 +23,7 @@ const NAV_ITEMS = [
 ];
 
 // Sprint 3: Chat · Sprint 4: Esquema/Monitoreo/Auditoría/Admin · Sprint 5: Sandbox.
-const ENABLED = new Set(['chat', 'schema', 'monitor', 'sandbox', 'audit', 'admin']);
+const ENABLED = new Set(['chat', 'schema', 'monitor', 'sandbox', 'optimize', 'audit', 'admin']);
 
 function initialsOf(name) {
   const parts = (name || 'Usuario').trim().split(/\s+/).slice(0, 2);

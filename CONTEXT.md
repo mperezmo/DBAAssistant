@@ -4,7 +4,7 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprint 1-5 ✅ (Sprint 5 = v0.5.0) · Sprint 6 🚧 (caché Redis)
+> **Estado actual:** Sprint 1-6 ✅ (v0.5.0 = Sprint 5; Sprint 6 completo: caché + optimización)
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
 > **React + Vite** (proyecto en `frontend/`, build multi-stage en Docker → nginx).
@@ -72,7 +72,10 @@
 >   "Caché · Redis" en el Panel Admin.
 > - **Circuit breaker**: si Redis falla, no se reintenta por 10s (degrada a
 >   cache-miss sin pagar timeouts). Todo tolerante a fallos.
-> - Falta de Sprint 6: **query optimization** (índices faltantes/no usados).
+> - **Query optimization** (`/optimization/{conn}/{db}/{missing,unused}-indexes`):
+>   índices faltantes (`sys.dm_db_missing_index_*`) con CREATE sugerido, e índices
+>   sin uso (`sys.dm_db_index_usage_stats`) con DROP sugerido. Página "Optimización"
+>   (Operaciones) con copiar al portapapeles. Requiere VIEW SERVER STATE.
 
 ---
 
@@ -98,7 +101,7 @@ recomendaciones de optimización.
 | 3 | Chat & Claude API | ⬜ Pendiente |
 | **4** | Análisis de BD (metadata, performance, anomalías, auditoría) | ✅ **COMPLETADO** |
 | **5** | Generación y Ejecución SQL | ✅ **COMPLETADO** (v0.5.0) |
-| **6** | Cache & Optimización (Redis) | 🚧 En progreso (caché de metadata + stats; falta query optimization) |
+| **6** | Cache & Optimización (Redis) | ✅ **COMPLETADO** (caché + stats + optimización de índices) |
 | 7 | DevOps & Deployment (CI/CD, Azure) | ⬜ Pendiente |
 | 8 | Testing & Docs | ⬜ Pendiente |
 

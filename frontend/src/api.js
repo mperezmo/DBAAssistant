@@ -49,6 +49,10 @@ export const getTableDetail = (token, conn, db, schema, table) =>
 export const getCacheStats = (token) => authGet(token, '/cache/stats');
 export const clearCache = (token) => authSend(token, 'POST', '/cache/clear');
 
+// ── Optimización de índices (Sprint 6) ──
+export const getMissingIndexes = (token, conn, db) => authGet(token, `/optimization/${conn}/${e(db)}/missing-indexes`);
+export const getUnusedIndexes = (token, conn, db) => authGet(token, `/optimization/${conn}/${e(db)}/unused-indexes`);
+
 // ── Performance por conexión (Sprint 4) ──
 export const getPerfMetrics = (token, conn) => authGet(token, `/performance/${conn}/metrics`);
 export const getActiveSessions = (token, conn) => authGet(token, `/performance/${conn}/sessions`);

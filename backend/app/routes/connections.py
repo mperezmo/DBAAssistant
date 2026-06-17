@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.dependencies import get_current_user
 from app.models.auth import User
 from app.models.connection import Connection, ConnectionCreate, ConnectionTestResult
-from app.services import audit_repo, connections_repo
+from app.services import audit_repo, cache, connections_repo
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -20,7 +20,12 @@ def list_connections(user: User = Depends(get_current_user)):
 
 
 @router.get("/{connection_id}/databases", response_model=list[str])
-def list_databases(connection_id: str, user: User = Depends(get_current_user)):
+def list_databases(connection_id: str, refresh: bool = False, user: User = Depends(get_current_user)):
+    key = f"cache:data:databases:{connection_id}:_"
+    if not refresh:
+        cached = cache.get_json(key)
+        if cached is not None:
+            return cached
     try:
         dbs = connections_repo.list_databases(connection_id)
     except Exception as exc:  # noqa: BLE001
@@ -30,6 +35,7 @@ def list_databases(connection_id: str, user: User = Depends(get_current_user)):
         )
     if dbs is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conexión no encontrada")
+    cache.set_json(key, dbs)
     return dbs
 
 
@@ -51,5 +57,6 @@ def test_connection(body: ConnectionCreate, user: User = Depends(get_current_use
 def delete_connection(connection_id: str, request: Request, user: User = Depends(get_current_user)):
     if not connections_repo.delete(connection_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conexión no encontrada")
+    cache.invalidate_connection(connection_id)
     audit_repo.log(user.email or user.username, "connection.delete",
                    target=connection_id, ip=_ip(request))

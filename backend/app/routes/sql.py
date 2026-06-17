@@ -8,7 +8,7 @@ from app.models.sql import (
     ExecuteRequest, ExecuteResponse, GenerateRequest, GenerateResponse, QueryHistoryEntry,
 )
 from app.services import (
-    audit_repo, claude, connections_repo, query_history_repo, schema_repo,
+    audit_repo, cache, claude, connections_repo, query_history_repo, schema_repo,
     sql_executor, sql_validator,
 )
 
@@ -59,6 +59,9 @@ def execute(body: ExecuteRequest, request: Request, user: User = Depends(get_cur
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error al ejecutar: {exc}")
 
     result["warnings"] = warnings
+    # Una escritura aplicada puede cambiar el esquema/tamaños → invalidar caché.
+    if result.get("committed"):
+        cache.invalidate_connection(body.connection_id)
     query_history_repo.add(actor, body.connection_id, body.database, body.sql, kind=result["kind"],
                            affected_rows=result.get("affected_rows"), committed=result.get("committed", False))
     audit_repo.log(actor, "query.execute", target=f"{body.connection_id}/{body.database}",

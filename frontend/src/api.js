@@ -35,14 +35,19 @@ export const getConnections = (token) => authGet(token, '/connections');
 export const createConnection = (token, body) => authSend(token, 'POST', '/connections', body);
 export const testConnection = (token, body) => authSend(token, 'POST', '/connections/test', body);
 export const deleteConnection = (token, id) => authSend(token, 'DELETE', `/connections/${id}`);
-export const getDatabases = (token, conn) => authGet(token, `/connections/${conn}/databases`);
+const _r = (refresh) => (refresh ? '?refresh=true' : '');
+export const getDatabases = (token, conn, refresh) => authGet(token, `/connections/${conn}/databases${_r(refresh)}`);
 
-// ── Esquema por conexión + base (Sprint 4) ──
+// ── Esquema por conexión + base (Sprint 4) · caché Redis (Sprint 6) ──
 const e = encodeURIComponent;
-export const getSchemaOverview = (token, conn, db) => authGet(token, `/schema/${conn}/${e(db)}/overview`);
-export const getTables = (token, conn, db) => authGet(token, `/schema/${conn}/${e(db)}/tables`);
+export const getSchemaOverview = (token, conn, db, refresh) => authGet(token, `/schema/${conn}/${e(db)}/overview${_r(refresh)}`);
+export const getTables = (token, conn, db, refresh) => authGet(token, `/schema/${conn}/${e(db)}/tables${_r(refresh)}`);
 export const getTableDetail = (token, conn, db, schema, table) =>
   authGet(token, `/schema/${conn}/${e(db)}/tables/${e(schema)}/${e(table)}`);
+
+// ── Caché (Sprint 6) ──
+export const getCacheStats = (token) => authGet(token, '/cache/stats');
+export const clearCache = (token) => authSend(token, 'POST', '/cache/clear');
 
 // ── Performance por conexión (Sprint 4) ──
 export const getPerfMetrics = (token, conn) => authGet(token, `/performance/${conn}/metrics`);

@@ -69,7 +69,7 @@ export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
     })();
   }, [connectionId, getAccessTokenSilently]);
 
-  const loadSchema = useCallback(async () => {
+  const loadSchema = useCallback(async (force = false) => {
     if (!connectionId || !database) {
       setOverview(null);
       setTables([]);
@@ -82,8 +82,8 @@ export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
     try {
       const token = await getAccessTokenSilently();
       const [ov, tbs] = await Promise.all([
-        getSchemaOverview(token, connectionId, database),
-        getTables(token, connectionId, database),
+        getSchemaOverview(token, connectionId, database, force),
+        getTables(token, connectionId, database, force),
       ]);
       setOverview(ov);
       setTables(tbs);
@@ -142,7 +142,7 @@ export default function SchemaPage({ connectionId, onSelectConnection, goTo }) {
         )}
 
         <button className="btn btn-ghost btn-sm" onClick={() => goTo('admin')}><Icon name="settings" size={13} /> Gestionar</button>
-        {ready && <button className="btn btn-ghost btn-sm" onClick={loadSchema}><Icon name="refresh" size={13} /> Refrescar</button>}
+        {ready && <button className="btn btn-ghost btn-sm" onClick={() => loadSchema(true)}><Icon name="refresh" size={13} /> Refrescar</button>}
       </div>
 
       {error && (

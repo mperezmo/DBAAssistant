@@ -4,7 +4,7 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprint 1-4 ✅ (Sprint 4 = v0.4.0) · Sprint 5 🚧 (SQL sandbox)
+> **Estado actual:** Sprint 1-5 ✅ (Sprint 5 = v0.5.0) · Sprint 6 🚧 (caché Redis)
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
 > **React + Vite** (proyecto en `frontend/`, build multi-stage en Docker → nginx).
@@ -62,6 +62,17 @@
 > - `GET /sql/history`: historial en MongoDB (`query_history`). Cada ejecución se
 >   audita como `query.execute`. Servicios: `sql_validator`, `sql_executor`,
 >   `query_history_repo`.
+>
+> **Sprint 6 (en curso) — caché Redis (`services/cache.py`):**
+> - Cachea metadata (`/connections/{id}/databases`, `/schema/.../overview|tables|
+>   tables/{s}/{t}`) con TTL 5 min. `?refresh=true` saltea y repuebla.
+> - Invalidación por conexión: al borrar una conexión y tras una escritura
+>   aplicada (`/sql/execute` con commit).
+> - Stats hit/miss/ratio/keys (`GET /cache/stats`) + `POST /cache/clear`. Panel
+>   "Caché · Redis" en el Panel Admin.
+> - **Circuit breaker**: si Redis falla, no se reintenta por 10s (degrada a
+>   cache-miss sin pagar timeouts). Todo tolerante a fallos.
+> - Falta de Sprint 6: **query optimization** (índices faltantes/no usados).
 
 ---
 
@@ -86,8 +97,8 @@ recomendaciones de optimización.
 | **2** | Autenticación y Seguridad (Auth0 + JWT) | ✅ **COMPLETADO** (modo local; Auth0 listo a falta de tenant) |
 | 3 | Chat & Claude API | ⬜ Pendiente |
 | **4** | Análisis de BD (metadata, performance, anomalías, auditoría) | ✅ **COMPLETADO** |
-| **5** | Generación y Ejecución SQL | 🚧 En progreso (sandbox: NL→SQL, ejecución controlada, historial) |
-| 6 | Cache & Optimización (Redis) | ⬜ Pendiente |
+| **5** | Generación y Ejecución SQL | ✅ **COMPLETADO** (v0.5.0) |
+| **6** | Cache & Optimización (Redis) | 🚧 En progreso (caché de metadata + stats; falta query optimization) |
 | 7 | DevOps & Deployment (CI/CD, Azure) | ⬜ Pendiente |
 | 8 | Testing & Docs | ⬜ Pendiente |
 

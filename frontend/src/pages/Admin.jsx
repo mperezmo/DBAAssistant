@@ -3,6 +3,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../components/Icon.jsx';
 import {
   getHealth, getConnections, createConnection, testConnection, deleteConnection,
+  getCacheStats, clearCache,
 } from '../api.js';
 
 function ServiceCard({ name, ok }) {
@@ -28,6 +29,7 @@ export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
   const { getAccessTokenSilently } = useAuth0();
   const [health, setHealth] = useState(null);
   const [conns, setConns] = useState([]);
+  const [cacheStats, setCacheStats] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [testResult, setTestResult] = useState(null);
@@ -38,13 +40,32 @@ export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
     setError('');
     try {
       const token = await getAccessTokenSilently();
-      const [h, c] = await Promise.all([getHealth().catch(() => null), getConnections(token)]);
+      const [h, c, cs] = await Promise.all([
+        getHealth().catch(() => null),
+        getConnections(token),
+        getCacheStats(token).catch(() => null),
+      ]);
       setHealth(h);
       setConns(c);
+      setCacheStats(cs);
     } catch (e) {
       setError(e.message);
     }
   }, [getAccessTokenSilently]);
+
+  async function onClearCache() {
+    setBusy(true);
+    setError('');
+    try {
+      const token = await getAccessTokenSilently();
+      await clearCache(token);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -124,6 +145,26 @@ export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
 
       <div className="grid-3" style={{ marginBottom: 20 }}>
         {services.map((s) => <ServiceCard key={s.name} name={s.name} ok={!!s.ok} />)}
+      </div>
+
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-head">
+          <div>
+            <div className="card-eyebrow">Caché · Redis</div>
+            <h3 className="card-title">Rendimiento de caché</h3>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={onClearCache} disabled={busy}>
+            <Icon name="refresh" size={13} /> Limpiar caché
+          </button>
+        </div>
+        <div className="card-body">
+          <div className="grid-4">
+            <div><div className="card-eyebrow">Hits</div><div className="metric-large">{cacheStats?.hits ?? '—'}</div></div>
+            <div><div className="card-eyebrow">Misses</div><div className="metric-large">{cacheStats?.misses ?? '—'}</div></div>
+            <div><div className="card-eyebrow">Hit ratio</div><div className="metric-large">{cacheStats?.hit_ratio != null ? `${cacheStats.hit_ratio}%` : '—'}</div></div>
+            <div><div className="card-eyebrow">Claves</div><div className="metric-large">{cacheStats?.keys ?? '—'}</div></div>
+          </div>
+        </div>
       </div>
 
       <div className="card">

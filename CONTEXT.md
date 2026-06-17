@@ -4,7 +4,8 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprint 1-6 ✅ (último tag v0.6.0) · Sprint 7 🚧 (CI/CD)
+> **Estado actual:** Sprints 1-8 ✅ — proyecto completo (último tag v0.7.0).
+> Deploy real a Azure pendiente solo de credenciales del usuario.
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
 > **React + Vite** (proyecto en `frontend/`, build multi-stage en Docker → nginx).
@@ -93,6 +94,17 @@
 > - Guía completa de qué configurar: **`docs/DEPLOYMENT.md`**.
 > - Pendiente del usuario (configurar): credenciales Azure, secrets/vars de GitHub,
 >   `.env.production` o Key Vault, recursos gestionados (Azure SQL/Cosmos/Redis).
+>
+> **Sprint 8 — Testing & Docs:**
+> - **Unit tests** (`tests/unit/`): 53 tests + **cobertura** (`pytest-cov`, ~67%).
+>   `pytest.ini`: `testpaths=tests/unit` (el CI corre solo unit), `addopts=--cov=app`.
+> - **Integration tests** (`tests/integration/`, marker `integration`): contra los
+>   servicios reales (backend/Mongo/Redis por puertos publicados). Correr con
+>   `python -m pytest tests/integration -v` con el stack levantado. Se saltean si
+>   el servicio no está.
+> - **API docs**: `/docs` (Swagger) y `/redoc` con descripción + tags por módulo
+>   (`openapi_tags` en `main.py`). Resumen en `docs/API.md`.
+> - **Docs**: `README.md`, `docs/USER_GUIDE.md`, `docs/API.md`, `docs/DEPLOYMENT.md`.
 
 ---
 
@@ -119,8 +131,8 @@ recomendaciones de optimización.
 | **4** | Análisis de BD (metadata, performance, anomalías, auditoría) | ✅ **COMPLETADO** |
 | **5** | Generación y Ejecución SQL | ✅ **COMPLETADO** (v0.5.0) |
 | **6** | Cache & Optimización (Redis) | ✅ **COMPLETADO** (caché + stats + optimización de índices) |
-| **7** | DevOps & Deployment (CI/CD, Azure) | 🚧 En progreso (CI con GitHub Actions; falta CD/Azure) |
-| 8 | Testing & Docs | ⬜ Pendiente |
+| **7** | DevOps & Deployment (CI/CD, Azure) | ✅ **COMPLETADO** (CI + CD a GHCR; deploy Azure = scaffold listo) |
+| **8** | Testing & Docs | ✅ **COMPLETADO** |
 
 ---
 

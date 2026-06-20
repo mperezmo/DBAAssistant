@@ -87,6 +87,26 @@ def list_tables(engine: Engine) -> list[dict]:
     return _rows(engine, _TABLES_SQL)
 
 
+_SCHEMA_SUMMARY_SQL = """
+SELECT TABLE_SCHEMA AS s, TABLE_NAME AS t, COLUMN_NAME AS c
+FROM INFORMATION_SCHEMA.COLUMNS
+ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION
+"""
+
+
+def schema_summary(engine: Engine, max_tables: int = 60) -> str:
+    """Resumen compacto del esquema: 'schema.tabla(col1, col2, ...)' por línea.
+
+    Para anclar a la IA (generación/refinamiento/chat) en los objetos REALES.
+    """
+    rows = _rows(engine, _SCHEMA_SUMMARY_SQL)
+    tables: dict[str, list[str]] = {}
+    for r in rows:
+        tables.setdefault(f"{r['s']}.{r['t']}", []).append(r["c"])
+    lines = [f"{name}({', '.join(cols)})" for name, cols in list(tables.items())[:max_tables]]
+    return "\n".join(lines)
+
+
 def get_table_detail(engine: Engine, schema_name: str, table_name: str) -> dict | None:
     tbl = f"{schema_name}.{table_name}"
     oid = _rows(engine, "SELECT OBJECT_ID(:t) AS oid", {"t": tbl})[0]["oid"]

@@ -59,3 +59,27 @@ def test_build_prompt_context_format():
              "description": "", "tags": [], "sensitive": True, "sensitive_columns": "", "restriction": "mask"}]):
         text = context_repo.build_prompt_context(CONN, DB)
     assert "ERP" in text and "regla1" in text and "Clientes" in text and "SENSIBLE" in text
+
+
+def test_refine_without_api_key(client):
+    token = _token(client)
+    with patch("app.services.claude.is_configured", return_value=False):
+        res = client.post(f"/context/{CONN}/{DB}/refine",
+                          json={"description": "x", "rules": [], "glossary": []},
+                          headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 503
+
+
+def test_refine_ok(client):
+    token = _token(client)
+    refined = {"description": "ERP profesional", "rules": ["R1"],
+               "glossary": [{"term": "cliente activo", "definition": "clientes WHERE estado=1"}]}
+    with patch("app.services.claude.is_configured", return_value=True), \
+         patch("app.services.connections_repo.get_engine_for_db", return_value=None), \
+         patch("app.services.claude.refine_business_context", return_value=refined):
+        res = client.post(f"/context/{CONN}/{DB}/refine",
+                          json={"description": "erp de ventas", "rules": ["r"], "glossary": []},
+                          headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+    assert res.json()["description"] == "ERP profesional"
+    assert res.json()["glossary"][0]["term"] == "cliente activo"

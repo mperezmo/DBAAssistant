@@ -1,11 +1,11 @@
 # backend/app/routes/context.py
 """Contexto de negocio por conexión+base (Sprint 9). Protegido por auth."""
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.dependencies import get_current_user
 from app.models.auth import User
 from app.models.context import DatabaseContext, TableContext, TableContextEntry
-from app.services import audit_repo, cache, context_repo
+from app.services import audit_repo, cache, claude, connections_repo, context_repo, schema_repo
 
 router = APIRouter(prefix="/context", tags=["context"])
 
@@ -27,6 +27,29 @@ def write_db_context(connection_id: str, database: str, body: DatabaseContext,
     audit_repo.log(user.email or user.username, "context.update",
                    target=f"{connection_id}/{database}", ip=_ip(request))
     return body
+
+
+@router.post("/{connection_id}/{database}/refine", response_model=DatabaseContext)
+def refine_context(connection_id: str, database: str, body: DatabaseContext,
+                   user: User = Depends(get_current_user)):
+    """Procesa el contexto 'en criollo' con IA → versión profesional mapeada al
+    esquema real. No lo guarda: lo devuelve para que el usuario revise y confirme."""
+    if not claude.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Claude no está configurado: falta ANTHROPIC_API_KEY",
+        )
+    summary = None
+    try:
+        engine = connections_repo.get_engine_for_db(connection_id, database)
+        if engine is not None:
+            summary = schema_repo.schema_summary(engine)
+    except Exception:  # noqa: BLE001
+        summary = None
+    try:
+        return claude.refine_business_context(body.model_dump(), summary)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al procesar con IA: {exc}")
 
 
 @router.get("/{connection_id}/{database}/tables", response_model=list[TableContextEntry])

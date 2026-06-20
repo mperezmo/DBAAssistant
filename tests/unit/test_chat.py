@@ -45,3 +45,21 @@ def test_chat_returns_reply(client):
 def test_list_conversations_requires_auth(client):
     res = client.get("/chat/conversations")
     assert res.status_code == 401
+
+
+def test_chat_grounded_passes_context(client):
+    token = _token(client)
+    with patch("app.services.claude.is_configured", return_value=True), \
+         patch("app.services.claude.generate_reply", return_value="ok") as gen, \
+         patch("app.services.chat_repo.create_conversation", return_value="c1"), \
+         patch("app.services.chat_repo.add_message"), \
+         patch("app.services.chat_repo.get_history", return_value=[]), \
+         patch("app.routes.chat._grounding", return_value="CONTEXTO"):
+        res = client.post(
+            "/chat",
+            json={"message": "¿cuántos clientes activos hay?", "connection_id": "X", "database": "DB"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert res.status_code == 200
+    # el grounding se pasó como 3er argumento a generate_reply
+    assert gen.call_args.args[2] == "CONTEXTO"

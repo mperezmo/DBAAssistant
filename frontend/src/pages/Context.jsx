@@ -3,7 +3,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../components/Icon.jsx';
 import {
   getConnections, getDatabases, getTables, getTableDetail,
-  getDbContext, putDbContext, getTableContexts, getTableContext, putTableContext,
+  getDbContext, putDbContext, getTableContexts, getTableContext, putTableContext, refineContext,
 } from '../api.js';
 
 const selectStyle = {
@@ -35,6 +35,7 @@ export default function ContextPage({ connectionId, onSelectConnection, goTo }) 
   const [selected, setSelected] = useState(null);
   const [tform, setTform] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [refining, setRefining] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
 
@@ -85,6 +86,20 @@ export default function ContextPage({ connectionId, onSelectConnection, goTo }) 
   }, [connectionId, database, getAccessTokenSilently]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  async function refineDb() {
+    setRefining(true); setError(''); setSaved('');
+    try {
+      const t = await getAccessTokenSilently();
+      const refined = await refineContext(t, connectionId, database, {
+        description: desc, rules: textToRules(rulesText), glossary: textToGlossary(glossaryText),
+      });
+      setDesc(refined.description || '');
+      setRulesText((refined.rules || []).join('\n'));
+      setGlossaryText((refined.glossary || []).map((g) => `${g.term} = ${g.definition}`).join('\n'));
+      setSaved('Procesado con IA. Revisá el resultado y tocá Guardar para confirmarlo.');
+    } catch (e) { setError(e.message); } finally { setRefining(false); }
+  }
 
   async function saveDb() {
     setBusy(true); setError(''); setSaved('');
@@ -184,9 +199,22 @@ export default function ContextPage({ connectionId, onSelectConnection, goTo }) 
                 <div className="card-eyebrow">Glosario y reglas · alimenta la IA</div>
                 <h3 className="card-title">Contexto de la base</h3>
               </div>
-              <button className="btn btn-primary btn-sm" onClick={saveDb} disabled={busy}>Guardar</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="btn btn-ghost btn-sm" onClick={refineDb} disabled={busy || refining}
+                  title="La IA reescribe tus notas 'en criollo' a contexto profesional y las mapea a las tablas/columnas reales del esquema."
+                >
+                  <Icon name="chat" size={13} /> {refining ? 'Procesando…' : 'Procesar con IA'}
+                </button>
+                <button className="btn btn-primary btn-sm" onClick={saveDb} disabled={busy || refining}>Guardar</button>
+              </div>
             </div>
             <div className="card-body" style={{ display: 'grid', gap: 14 }}>
+              <div style={{ fontSize: 12, color: 'var(--fg-muted)', background: 'var(--bg-sunk)', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', lineHeight: 1.5 }}>
+                Escribí en criollo lo que sepas del negocio. Tocá <strong>Procesar con IA</strong> para
+                dejarlo profesional y aterrizado al esquema real; después <strong>Guardar</strong>. Este
+                contexto lo usa el <strong>chatbot y el Sandbox</strong> para saber dónde está cada dato.
+              </div>
               <div className="field"><label>Descripción</label>
                 <textarea value={desc} onChange={(e) => setDesc(e.target.value)} style={{ ...areaStyle, minHeight: 56, fontFamily: 'inherit' }} placeholder="¿Qué representa esta base en el negocio?" /></div>
               <div className="field"><label>Reglas operativas (una por línea)</label>

@@ -25,9 +25,14 @@ function authSend(token, method, path, body) {
 // ── Health (público) ──
 export const getHealth = () => request('/health');
 
-// ── Chat (Sprint 3) ──
-export function sendChat(token, message, conversationId) {
-  return authSend(token, 'POST', '/chat', { message, conversation_id: conversationId || null });
+// ── Chat (Sprint 3 · anclado a base en Sprint 9) ──
+export function sendChat(token, message, conversationId, connectionId, database) {
+  return authSend(token, 'POST', '/chat', {
+    message,
+    conversation_id: conversationId || null,
+    connection_id: connectionId || null,
+    database: database || null,
+  });
 }
 
 // ── Conexiones = instancias (Sprint 4) ──
@@ -59,6 +64,7 @@ export const putDbContext = (token, conn, db, body) => authSend(token, 'PUT', `/
 export const getTableContexts = (token, conn, db) => authGet(token, `/context/${conn}/${e(db)}/tables`);
 export const getTableContext = (token, conn, db, s, t) => authGet(token, `/context/${conn}/${e(db)}/tables/${e(s)}/${e(t)}`);
 export const putTableContext = (token, conn, db, s, t, body) => authSend(token, 'PUT', `/context/${conn}/${e(db)}/tables/${e(s)}/${e(t)}`, body);
+export const refineContext = (token, conn, db, body) => authSend(token, 'POST', `/context/${conn}/${e(db)}/refine`, body);
 
 // ── Performance por conexión (Sprint 4) ──
 export const getPerfMetrics = (token, conn) => authGet(token, `/performance/${conn}/metrics`);

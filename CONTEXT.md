@@ -111,10 +111,17 @@
 > - `routes/context.py` (`/context/{conn}/{db}` y `.../tables/{schema}/{table}`):
 >   descripción, reglas y glosario por base; alias/descripción/tags/sensibilidad
 >   por tabla. Guardado en MongoDB (`business_context`), auditado `context.update`.
-> - **Integración IA:** `context_repo.build_prompt_context()` se inyecta en
->   `/sql/generate` (Sandbox) → mejores SQL con jerga del negocio.
-> - Frontend `Context.jsx` (Conocimiento → Contexto de Negocio). Servicios:
->   `context_repo`. 58 tests.
+> - **Integración IA (capa semántica):**
+>   - `POST /context/{conn}/{db}/refine`: la IA toma las notas "en criollo" y
+>     devuelve contexto PROFESIONAL y mapeado al esquema REAL
+>     (`claude.refine_business_context` → JSON; `schema_repo.schema_summary`
+>     ancla a tablas/columnas reales). El usuario revisa y guarda.
+>   - El contexto guardado se inyecta en `/sql/generate` (Sandbox) y en el
+>     **Chat anclado a una base** (`ChatRequest.connection_id/database` →
+>     `claude.generate_reply(..., extra_context)`): el bot sabe DÓNDE buscar
+>     cada dato (esquema + glosario/reglas del negocio).
+> - Frontend: `Context.jsx` (botón "Procesar con IA") y `Chat.jsx` (selector
+>   de base opcional con indicador de anclaje). 61 tests.
 
 ---
 

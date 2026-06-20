@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../components/Icon.jsx';
 import {
-  getConnections, getDatabases, getTables,
+  getConnections, getDatabases, getTables, getTableDetail,
   getDbContext, putDbContext, getTableContexts, getTableContext, putTableContext,
 } from '../api.js';
 
@@ -102,9 +102,22 @@ export default function ContextPage({ connectionId, onSelectConnection, goTo }) 
     setSelected(id);
     try {
       const t = await getAccessTokenSilently();
-      const ctx = await getTableContext(t, connectionId, database, tb.schema_name, tb.table_name);
-      setTform({ schema_name: tb.schema_name, table_name: tb.table_name, ...ctx, tagsText: (ctx.tags || []).join(', ') });
+      const [ctx, detail] = await Promise.all([
+        getTableContext(t, connectionId, database, tb.schema_name, tb.table_name),
+        getTableDetail(t, connectionId, database, tb.schema_name, tb.table_name),
+      ]);
+      setTform({
+        schema_name: tb.schema_name, table_name: tb.table_name, ...ctx,
+        tagsText: (ctx.tags || []).join(', '),
+        columns: (detail.columns || []).map((c) => c.name),
+      });
     } catch (e) { setError(e.message); }
+  }
+
+  function toggleSensitiveCol(name) {
+    const set = new Set((tform.sensitive_columns || '').split(',').map((s) => s.trim()).filter(Boolean));
+    if (set.has(name)) set.delete(name); else set.add(name);
+    upd('sensitive_columns', Array.from(set).join(', '));
   }
 
   async function saveTable() {
@@ -178,8 +191,16 @@ export default function ContextPage({ connectionId, onSelectConnection, goTo }) 
                 <textarea value={desc} onChange={(e) => setDesc(e.target.value)} style={{ ...areaStyle, minHeight: 56, fontFamily: 'inherit' }} placeholder="¿Qué representa esta base en el negocio?" /></div>
               <div className="field"><label>Reglas operativas (una por línea)</label>
                 <textarea value={rulesText} onChange={(e) => setRulesText(e.target.value)} style={{ ...areaStyle, minHeight: 80 }} placeholder={'No exponer sueldos sin enmascarar\nTodas las fechas en UTC'} /></div>
-              <div className="field"><label>Glosario (una por línea, formato «término = definición»)</label>
-                <textarea value={glossaryText} onChange={(e) => setGlossaryText(e.target.value)} style={{ ...areaStyle, minHeight: 80 }} placeholder={'cliente activo = estado=1 y compró en los últimos 6 meses\nfactura vencida = estado=pendiente y fecha_venc < hoy'} /></div>
+              <div className="field">
+                <label>Glosario del negocio</label>
+                <div style={{ fontSize: 11.5, color: 'var(--fg-faint)', marginBottom: 6, lineHeight: 1.5 }}>
+                  Definí términos propios del negocio y qué significan en los datos, para que la IA los
+                  entienda al generar SQL. Escribí <strong>uno por línea</strong> con el formato{' '}
+                  <span className="metric-mono">término = qué significa o cómo se calcula</span>.
+                </div>
+                <textarea value={glossaryText} onChange={(e) => setGlossaryText(e.target.value)} style={{ ...areaStyle, minHeight: 90 }}
+                  placeholder={'cliente activo = clientes con estado=1 que compraron en los últimos 6 meses\nfactura vencida = facturas con estado pendiente y fecha de vencimiento anterior a hoy'} />
+              </div>
             </div>
           </div>
 
@@ -220,12 +241,37 @@ export default function ContextPage({ connectionId, onSelectConnection, goTo }) 
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                       <input type="checkbox" checked={tform.sensitive} onChange={(e) => upd('sensitive', e.target.checked)} /> Tabla sensible
                     </label>
-                    {tform.sensitive && (
-                      <>
-                        <div className="field"><label>Columnas sensibles</label><input style={inputStyle} value={tform.sensitive_columns} onChange={(e) => upd('sensitive_columns', e.target.value)} placeholder="email, dni" /></div>
-                        <div className="field"><label>Restricción</label><input style={inputStyle} value={tform.restriction} onChange={(e) => upd('restriction', e.target.value)} placeholder="enmascaramiento / doble confirmación" /></div>
-                      </>
-                    )}
+                    {tform.sensitive && (() => {
+                      const selectedSensitive = new Set((tform.sensitive_columns || '').split(',').map((s) => s.trim()).filter(Boolean));
+                      return (
+                        <>
+                          <div className="field">
+                            <label>Columnas sensibles</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', background: 'var(--bg-sunk)' }}>
+                              {(tform.columns || []).length === 0 && <span style={{ color: 'var(--fg-faint)', fontSize: 12 }}>Sin columnas.</span>}
+                              {(tform.columns || []).map((name) => (
+                                <label key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, cursor: 'pointer' }}>
+                                  <input type="checkbox" checked={selectedSensitive.has(name)} onChange={() => toggleSensitiveCol(name)} />
+                                  <span className="metric-mono">{name}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="field">
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              Restricción
+                              <span
+                                title="Cómo se controla el acceso a esta tabla sensible: p. ej. enmascaramiento de datos, doble confirmación antes de consultar, o restricción por rol. Es una nota para el equipo y para la IA."
+                                style={{ display: 'inline-flex', color: 'var(--fg-faint)', cursor: 'help' }}
+                              >
+                                <Icon name="info" size={13} />
+                              </span>
+                            </label>
+                            <input style={inputStyle} value={tform.restriction} onChange={(e) => upd('restriction', e.target.value)} placeholder="enmascaramiento / doble confirmación / por rol" />
+                          </div>
+                        </>
+                      );
+                    })()}
                     <button className="btn btn-primary btn-sm" onClick={saveTable} disabled={busy}>Guardar tabla</button>
                   </div>
                 )}

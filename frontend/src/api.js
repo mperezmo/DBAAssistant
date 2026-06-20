@@ -53,6 +53,13 @@ export const clearCache = (token) => authSend(token, 'POST', '/cache/clear');
 export const getMissingIndexes = (token, conn, db) => authGet(token, `/optimization/${conn}/${e(db)}/missing-indexes`);
 export const getUnusedIndexes = (token, conn, db) => authGet(token, `/optimization/${conn}/${e(db)}/unused-indexes`);
 
+// ── Contexto de negocio (Sprint 9) ──
+export const getDbContext = (token, conn, db) => authGet(token, `/context/${conn}/${e(db)}`);
+export const putDbContext = (token, conn, db, body) => authSend(token, 'PUT', `/context/${conn}/${e(db)}`, body);
+export const getTableContexts = (token, conn, db) => authGet(token, `/context/${conn}/${e(db)}/tables`);
+export const getTableContext = (token, conn, db, s, t) => authGet(token, `/context/${conn}/${e(db)}/tables/${e(s)}/${e(t)}`);
+export const putTableContext = (token, conn, db, s, t, body) => authSend(token, 'PUT', `/context/${conn}/${e(db)}/tables/${e(s)}/${e(t)}`, body);
+
 // ── Performance por conexión (Sprint 4) ──
 export const getPerfMetrics = (token, conn) => authGet(token, `/performance/${conn}/metrics`);
 export const getActiveSessions = (token, conn) => authGet(token, `/performance/${conn}/sessions`);

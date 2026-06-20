@@ -4,7 +4,8 @@
 > trabajo en cualquier momento (humano o asistente IA).
 >
 > **Última actualización:** 2026-06-14
-> **Estado actual:** Sprints 1-8 ✅ — proyecto completo (último tag v0.7.0).
+> **Estado actual:** Sprints 1-8 ✅ (core completo) · Sprint 9 ✅ (Contexto de Negocio).
+> Opciones de menú pendientes (plan 9-12): **Alertas**, **Workarounds**, **Dashboard/Inicio**.
 > Deploy real a Azure pendiente solo de credenciales del usuario.
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
@@ -105,6 +106,15 @@
 > - **API docs**: `/docs` (Swagger) y `/redoc` con descripción + tags por módulo
 >   (`openapi_tags` en `main.py`). Resumen en `docs/API.md`.
 > - **Docs**: `README.md`, `docs/USER_GUIDE.md`, `docs/API.md`, `docs/DEPLOYMENT.md`.
+>
+> **Sprint 9 — Contexto de Negocio (opción de menú "Contexto de Negocio"):**
+> - `routes/context.py` (`/context/{conn}/{db}` y `.../tables/{schema}/{table}`):
+>   descripción, reglas y glosario por base; alias/descripción/tags/sensibilidad
+>   por tabla. Guardado en MongoDB (`business_context`), auditado `context.update`.
+> - **Integración IA:** `context_repo.build_prompt_context()` se inyecta en
+>   `/sql/generate` (Sandbox) → mejores SQL con jerga del negocio.
+> - Frontend `Context.jsx` (Conocimiento → Contexto de Negocio). Servicios:
+>   `context_repo`. 58 tests.
 
 ---
 

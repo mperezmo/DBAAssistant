@@ -10,10 +10,11 @@ import MonitorPage from './pages/Monitor.jsx';
 import AuditPage from './pages/Audit.jsx';
 import SandboxPage from './pages/Sandbox.jsx';
 import OptimizePage from './pages/Optimize.jsx';
+import ContextPage from './pages/Context.jsx';
 
 const PAGES = {
   chat: ChatPage, schema: SchemaPage, admin: AdminPage, monitor: MonitorPage,
-  audit: AuditPage, sandbox: SandboxPage, optimize: OptimizePage,
+  audit: AuditPage, sandbox: SandboxPage, optimize: OptimizePage, context: ContextPage,
 };
 
 export default function App() {

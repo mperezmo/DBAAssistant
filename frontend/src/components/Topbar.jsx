@@ -10,7 +10,7 @@ function EnvPill({ env }) {
   );
 }
 
-const LABELS = { chat: 'Chat IA', schema: 'Esquema de BD', monitor: 'Monitoreo', sandbox: 'Sandbox', optimize: 'Optimización', audit: 'Auditoría', admin: 'Panel Admin' };
+const LABELS = { chat: 'Chat IA', schema: 'Esquema de BD', monitor: 'Monitoreo', sandbox: 'Sandbox', optimize: 'Optimización', context: 'Contexto de Negocio', audit: 'Auditoría', admin: 'Panel Admin' };
 
 export default function Topbar({ active, env }) {
   return (

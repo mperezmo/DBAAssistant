@@ -8,8 +8,8 @@ from app.models.sql import (
     ExecuteRequest, ExecuteResponse, GenerateRequest, GenerateResponse, QueryHistoryEntry,
 )
 from app.services import (
-    audit_repo, cache, claude, connections_repo, query_history_repo, schema_repo,
-    sql_executor, sql_validator,
+    audit_repo, cache, claude, connections_repo, context_repo, query_history_repo,
+    schema_repo, sql_executor, sql_validator,
 )
 
 router = APIRouter(prefix="/sql", tags=["sql"])
@@ -28,13 +28,21 @@ def generate(body: GenerateRequest, user: User = Depends(get_current_user)):
         )
     schema_context = None
     if body.connection_id and body.database:
+        parts = []
         try:
             engine = connections_repo.get_engine_for_db(body.connection_id, body.database)
             if engine is not None:
                 tbls = schema_repo.list_tables(engine)
-                schema_context = ", ".join(f"{t['schema_name']}.{t['table_name']}" for t in tbls[:50])
+                parts.append("Tablas: " + ", ".join(f"{t['schema_name']}.{t['table_name']}" for t in tbls[:50]))
         except Exception:  # noqa: BLE001
-            schema_context = None
+            pass
+        try:
+            biz = context_repo.build_prompt_context(body.connection_id, body.database)
+            if biz:
+                parts.append("Contexto de negocio:\n" + biz)
+        except Exception:  # noqa: BLE001
+            pass
+        schema_context = "\n\n".join(parts) or None
     try:
         sql = claude.generate_sql(body.prompt, schema_context)
     except Exception as exc:  # noqa: BLE001

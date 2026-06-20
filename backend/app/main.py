@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.routes import (
-    audit, auth, cache, chat, connections, health, optimization, performance, schema, sql,
+    audit, auth, cache, chat, connections, context, health, optimization, performance,
+    schema, sql,
 )
 
 settings = get_settings()
@@ -29,6 +30,7 @@ TAGS_METADATA = [
     {"name": "chat", "description": "Chat con Claude e historial de conversaciones (MongoDB)."},
     {"name": "audit", "description": "Bitácora de acciones (quién/qué/cuándo)."},
     {"name": "cache", "description": "Estadísticas y limpieza de la caché Redis."},
+    {"name": "context", "description": "Contexto de negocio (glosario, reglas, tablas) que enriquece la IA."},
 ]
 
 app = FastAPI(
@@ -57,6 +59,7 @@ app.include_router(audit.router)
 app.include_router(sql.router)
 app.include_router(cache.router)
 app.include_router(optimization.router)
+app.include_router(context.router)
 
 
 @app.get("/")

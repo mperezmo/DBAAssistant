@@ -8,6 +8,7 @@ const LABELS = {
   'connection.delete': 'Baja conexión',
   'schema.view': 'Ver esquema',
   'query.execute': 'Ejecutar SQL',
+  'context.update': 'Editar contexto',
 };
 
 const FILTERS = [

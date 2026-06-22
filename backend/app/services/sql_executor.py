@@ -41,6 +41,19 @@ def run_select(engine, sql: str, max_rows: int = 1000) -> tuple[list[str], list[
     return columns, rows, truncated
 
 
+def run_script(engine: Engine, sql: str) -> dict:
+    """Ejecuta un batch de mantenimiento (Workarounds, Sprint 10) en AUTOCOMMIT.
+
+    Comandos como KILL / DBCC / CHECKPOINT no toleran una transacción de usuario,
+    por eso no se envuelven en BEGIN/COMMIT. Devuelve filas afectadas y elapsed.
+    """
+    start = time.time()
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        affected = conn.execute(text(sql)).rowcount
+    affected = None if affected is None or affected < 0 else int(affected)
+    return {"affected_rows": affected, "elapsed_ms": _ms(start)}
+
+
 def run(engine: Engine, sql: str, mode: str) -> dict:
     start = time.time()
 

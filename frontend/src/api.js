@@ -95,3 +95,10 @@ export const getAudit = (token) => authGet(token, '/audit?limit=200');
 export const generateSql = (token, body) => authSend(token, 'POST', '/sql/generate', body);
 export const executeSql = (token, body) => authSend(token, 'POST', '/sql/execute', body);
 export const getQueryHistory = (token) => authGet(token, '/sql/history?limit=50');
+
+// ── Workarounds: biblioteca de remediación (Sprint 10) ──
+export const getWorkarounds = (token) => authGet(token, '/workarounds');
+export const createWorkaround = (token, body) => authSend(token, 'POST', '/workarounds', body);
+export const deleteWorkaround = (token, key) => authSend(token, 'DELETE', `/workarounds/${e(key)}`);
+export const runWorkaround = (token, key, body) => authSend(token, 'POST', `/workarounds/${e(key)}/run`, body);
+export const getWorkaroundRuns = (token) => authGet(token, '/workarounds/runs?limit=50');

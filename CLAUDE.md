@@ -15,8 +15,13 @@ orquestado con **Docker Compose**. Diseño en `design/DBA Assistant.html`.
 - **Sprint 9 ✅** Contexto de Negocio + IA: refinar "criollo"→profesional, y
   **chat-AGENTE** (Claude *tool use*) que elige la base solo, ejecuta SELECT
   (solo lectura, TOP 1000), muestra la tabla y exporta a CSV.
+- **Sprint 10 ✅** **Workarounds** (biblioteca de remediación): catálogo de 6
+  playbooks built-in (matar sesiones bloqueantes, rebuild de índices, update
+  statistics, shrink de log, limpiar plan cache, checkpoint) + CRUD de
+  workarounds custom (Mongo). Cada uno corre en **diagnóstico** (solo lectura) o
+  **aplicar** (remediación real, AUTOCOMMIT), por conexión+base, auditado.
 - **Pendientes (plan)** para las opciones de menú deshabilitadas:
-  **Sprint 10 Workarounds**, **Sprint 11 Alertas**, **Sprint 12 Dashboard/Inicio**.
+  **Sprint 11 Alertas**, **Sprint 12 Dashboard/Inicio**.
 
 ## Cómo correr (desarrollo)
 - `docker-compose up -d` — SQL Server (host `:14330`), Mongo `:27017`, Redis `:6379`,

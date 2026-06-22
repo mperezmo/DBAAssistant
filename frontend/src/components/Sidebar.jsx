@@ -22,8 +22,8 @@ const NAV_ITEMS = [
   ]},
 ];
 
-// Sprint 3: Chat · Sprint 4: Esquema/Monitoreo/Auditoría/Admin · Sprint 5: Sandbox.
-const ENABLED = new Set(['chat', 'schema', 'monitor', 'sandbox', 'optimize', 'context', 'audit', 'admin']);
+// Sprint 3: Chat · Sprint 4: Esquema/Monitoreo/Auditoría/Admin · Sprint 5: Sandbox · Sprint 10: Workarounds.
+const ENABLED = new Set(['chat', 'schema', 'monitor', 'sandbox', 'optimize', 'context', 'audit', 'admin', 'workarounds']);
 
 function initialsOf(name) {
   const parts = (name || 'Usuario').trim().split(/\s+/).slice(0, 2);

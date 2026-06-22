@@ -45,6 +45,20 @@ Todos los endpoints (salvo `/` y `/health`) requieren `Authorization: Bearer <JW
 ### Chat
 - `POST /chat` · `GET /chat/conversations` · `GET /chat/conversations/{id}`
 
+### Contexto de negocio (por conexión + base)
+- `GET`/`PUT /context/{conn}/{db}` — descripción, reglas y glosario.
+- `POST /context/{conn}/{db}/refine` — refina el contexto "en criollo" con IA.
+- `GET`/`PUT /context/{conn}/{db}/tables/...` — contexto por tabla.
+
+### Workarounds (biblioteca de remediación)
+- `GET /workarounds` — catálogo (built-in + custom) con estadísticas de uso.
+- `POST /workarounds` — crea un workaround custom (`diagnose_sql` debe ser SELECT).
+- `DELETE /workarounds/{key}` — borra un workaround custom (los built-in no se borran).
+- `POST /workarounds/{key}/run` — ejecuta sobre `connection_id`+`database`:
+  `mode=diagnose` (solo lectura, muestra qué se vería afectado) o `mode=apply`
+  (ejecuta la remediación real). Auditado (`workaround.run`).
+- `GET /workarounds/runs` — historial de ejecuciones.
+
 ### Auditoría · Caché
 - `GET /audit`
 - `GET /cache/stats` · `POST /cache/clear`

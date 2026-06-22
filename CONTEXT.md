@@ -3,9 +3,10 @@
 > Documento vivo de contexto del proyecto. Sirve como referencia para retomar el
 > trabajo en cualquier momento (humano o asistente IA).
 >
-> **Última actualización:** 2026-06-14
-> **Estado actual:** Sprints 1-8 ✅ (core completo) · Sprint 9 ✅ (Contexto de Negocio).
-> Opciones de menú pendientes (plan 9-12): **Alertas**, **Workarounds**, **Dashboard/Inicio**.
+> **Última actualización:** 2026-06-22
+> **Estado actual:** Sprints 1-8 ✅ (core completo) · Sprint 9 ✅ (Contexto de Negocio)
+> · Sprint 10 ✅ (Workarounds).
+> Opciones de menú pendientes (plan 11-12): **Alertas**, **Dashboard/Inicio**.
 > Deploy real a Azure pendiente solo de credenciales del usuario.
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
@@ -127,6 +128,29 @@
 >     solo lectura) como CSV. Auditado (`chat.query`, `query.export`).
 > - Frontend: `Chat.jsx` (tabla de resultados + "Exportar CSV", sin selector de
 >   base) y `Context.jsx` (botón "Procesar con IA"). 64 tests.
+>
+> **Sprint 10 — Workarounds (opción de menú "Workarounds"):**
+> - Biblioteca de **playbooks de remediación pre-aprobados**. Cada workaround trae
+>   dos SQL: `diagnose_sql` (SELECT solo lectura: muestra qué se vería afectado) y
+>   `apply_sql` (batch de remediación que ejecuta la acción real).
+> - **Catálogo built-in** (`services/workarounds.py`, 6 playbooks): `kill_blocking_
+>   sessions`, `rebuild_fragmented_indexes`, `update_stale_statistics`, `shrink_log`,
+>   `clear_plan_cache`, `force_checkpoint`. Categorías Performance/Espacio/
+>   Mantenimiento; algunos requieren `VIEW SERVER STATE`.
+> - **Custom**: el usuario crea/borra workarounds propios (Mongo `workarounds`,
+>   `workarounds_repo`). Validación: `diagnose_sql` debe ser SELECT; no se pueden
+>   borrar los built-in.
+> - **Ejecución por conexión+base** (`routes/workarounds.py`): `POST /workarounds/
+>   {key}/run` con `mode=diagnose|apply`. El diagnóstico usa `sql_executor.run_select`;
+>   el aplicar usa el nuevo `sql_executor.run_script` (AUTOCOMMIT, porque KILL/DBCC/
+>   CHECKPOINT no toleran transacción de usuario). Al aplicar se invalida la caché.
+> - Toda corrida se **audita** (`workaround.run`/`create`/`delete`) y se registra en
+>   `workaround_runs` (alimenta las stats "N ejecuciones · última corrida" de cada
+>   tarjeta). Endpoints también: `GET /workarounds`, `POST`/`DELETE /workarounds`,
+>   `GET /workarounds/runs`.
+> - Frontend: `Workarounds.jsx` (selector conexión/base, grid de tarjetas estilo
+>   diseño, filtros por categoría + búsqueda, modal de ejecución diagnóstico/aplicar
+>   con confirmación, modal "Nuevo workaround"). 78 tests.
 
 ---
 
@@ -155,6 +179,8 @@ recomendaciones de optimización.
 | **6** | Cache & Optimización (Redis) | ✅ **COMPLETADO** (caché + stats + optimización de índices) |
 | **7** | DevOps & Deployment (CI/CD, Azure) | ✅ **COMPLETADO** (CI + CD a GHCR; deploy Azure = scaffold listo) |
 | **8** | Testing & Docs | ✅ **COMPLETADO** |
+| **9** | Contexto de Negocio + IA (chat-agente) | ✅ **COMPLETADO** |
+| **10** | Workarounds (biblioteca de remediación) | ✅ **COMPLETADO** |
 
 ---
 

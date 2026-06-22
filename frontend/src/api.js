@@ -25,14 +25,31 @@ function authSend(token, method, path, body) {
 // ── Health (público) ──
 export const getHealth = () => request('/health');
 
-// ── Chat (Sprint 3 · anclado a base en Sprint 9) ──
-export function sendChat(token, message, conversationId, connectionId, database) {
-  return authSend(token, 'POST', '/chat', {
-    message,
-    conversation_id: conversationId || null,
-    connection_id: connectionId || null,
-    database: database || null,
+// ── Chat-agente (Sprint 3/9): el bot elige la base y ejecuta solo ──
+export function sendChat(token, message, conversationId) {
+  return authSend(token, 'POST', '/chat', { message, conversation_id: conversationId || null });
+}
+
+// Descarga el resultado COMPLETO de una query como CSV (solo lectura).
+export async function exportCsv(token, connectionId, database, sql) {
+  const res = await fetch(`${API_BASE_URL}/sql/export`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ connection_id: connectionId, database, sql }),
   });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || `Error ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'dba-assistant-export.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // ── Conexiones = instancias (Sprint 4) ──

@@ -116,12 +116,17 @@
 >     devuelve contexto PROFESIONAL y mapeado al esquema REAL
 >     (`claude.refine_business_context` → JSON; `schema_repo.schema_summary`
 >     ancla a tablas/columnas reales). El usuario revisa y guarda.
->   - El contexto guardado se inyecta en `/sql/generate` (Sandbox) y en el
->     **Chat anclado a una base** (`ChatRequest.connection_id/database` →
->     `claude.generate_reply(..., extra_context)`): el bot sabe DÓNDE buscar
->     cada dato (esquema + glosario/reglas del negocio).
-> - Frontend: `Context.jsx` (botón "Procesar con IA") y `Chat.jsx` (selector
->   de base opcional con indicador de anclaje). 61 tests.
+>   - El contexto se inyecta en `/sql/generate` (Sandbox).
+> - **Chat-AGENTE (tool use)** — el chat NO requiere elegir base:
+>   - El backend arma un CATÁLOGO (conexiones + bases + contexto de negocio +
+>     esquema) y le da a Claude la herramienta `run_query` (SOLO LECTURA).
+>   - El agente elige la base según el contexto, genera el SELECT (TOP 1000), lo
+>     EJECUTA y devuelve la **tabla de resultados** (`ChatResponse.result`) + texto.
+>     Servicios: `claude.chat_agent`, `sql_executor.run_select`, `routes/chat._build_catalog`.
+>   - **Export CSV** (`POST /sql/export`): resultado completo (hasta 100k filas,
+>     solo lectura) como CSV. Auditado (`chat.query`, `query.export`).
+> - Frontend: `Chat.jsx` (tabla de resultados + "Exportar CSV", sin selector de
+>   base) y `Context.jsx` (botón "Procesar con IA"). 64 tests.
 
 ---
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../components/Icon.jsx';
-import { sendChat, getConnections, getDatabases } from '../api.js';
+import { sendChat, exportCsv } from '../api.js';
 
 function renderContent(text) {
   const parts = String(text).split('```');
@@ -36,7 +36,7 @@ function UserBubble({ children }) {
 
 function BotBubble({ children }) {
   return (
-    <div style={{ display: 'flex', gap: 12, marginBottom: 18 }}>
+    <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
       <div style={{
         width: 30, height: 30, borderRadius: '50%', background: 'var(--blue-50)',
         border: '1px solid var(--blue-100)', display: 'flex', alignItems: 'center',
@@ -48,51 +48,58 @@ function BotBubble({ children }) {
   );
 }
 
+function ResultTable({ result, onExport }) {
+  const [exporting, setExporting] = useState(false);
+  const [err, setErr] = useState('');
+  async function go() {
+    setExporting(true);
+    setErr('');
+    try { await onExport(result); } catch (e) { setErr(e.message); } finally { setExporting(false); }
+  }
+  return (
+    <div className="card" style={{ marginBottom: 18, marginLeft: 42 }}>
+      <div className="card-head">
+        <div>
+          <div className="card-eyebrow">{(result.connection_name || result.connection_id)} · {result.database}</div>
+          <h3 className="card-title">{result.row_count} fila(s){result.truncated ? ' · TOP 1000' : ''}</h3>
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={go} disabled={exporting}>
+          <Icon name="download" size={13} /> {exporting ? 'Exportando…' : 'Exportar CSV'}
+        </button>
+      </div>
+      <div style={{ overflow: 'auto', maxHeight: 340 }}>
+        <table className="data-table" style={{ fontSize: 12 }}>
+          <thead><tr>{result.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+          <tbody>
+            {result.rows.length === 0 && <tr><td colSpan={result.columns.length || 1} style={{ color: 'var(--fg-faint)' }}>Sin filas.</td></tr>}
+            {result.rows.map((row, i) => (
+              <tr key={i}>{row.map((v, j) => <td key={j} className="metric-mono" style={{ fontSize: 11.5 }}>{v === null ? 'NULL' : String(v)}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="card-foot">
+        <span>{result.truncated ? 'Mostrando 1000 filas (hay más). Exportá a CSV para el total.' : 'Resultado completo.'}</span>
+        {err && <span style={{ color: 'var(--terracotta)' }}>{err}</span>}
+      </div>
+    </div>
+  );
+}
+
 const SUGGESTIONS = [
-  '¿Cómo veo las consultas más lentas en SQL Server?',
-  'Generá un índice para acelerar búsquedas por email',
+  '¿Cuántos clientes hay y de qué ciudades?',
+  'Mostrame los 10 pedidos más caros',
   'Explicá qué es un deadlock',
 ];
 
-const selectStyle = {
-  padding: '6px 9px', borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--line-strong)', background: 'var(--bg-elev)', color: 'var(--fg)', fontSize: 12.5,
-};
-
-export default function ChatPage({ connectionId, onSelectConnection }) {
+export default function ChatPage() {
   const { getAccessTokenSilently } = useAuth0();
-  const [connections, setConnections] = useState([]);
-  const [databases, setDatabases] = useState([]);
-  const [database, setDatabase] = useState('');
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const bodyRef = useRef(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const t = await getAccessTokenSilently();
-        setConnections(await getConnections(t));
-      } catch { /* ignore */ }
-    })();
-  }, [getAccessTokenSilently]);
-
-  useEffect(() => {
-    setDatabase('');
-    setDatabases([]);
-    if (!connectionId) return;
-    (async () => {
-      try {
-        const t = await getAccessTokenSilently();
-        const dbs = await getDatabases(t, connectionId);
-        setDatabases(dbs);
-        if (dbs.length) setDatabase(dbs[0]);
-      } catch { /* ignore */ }
-    })();
-  }, [connectionId, getAccessTokenSilently]);
 
   useEffect(() => {
     const el = bodyRef.current;
@@ -108,9 +115,9 @@ export default function ChatPage({ connectionId, onSelectConnection }) {
     setLoading(true);
     try {
       const token = await getAccessTokenSilently();
-      const data = await sendChat(token, text, conversationId, connectionId, database);
+      const data = await sendChat(token, text, conversationId);
       setConversationId(data.conversation_id);
-      setMessages((m) => [...m, { role: 'assistant', content: data.reply }]);
+      setMessages((m) => [...m, { role: 'assistant', content: data.reply, result: data.result }]);
     } catch (e) {
       setError(e.message || 'Error al enviar el mensaje');
     } finally {
@@ -125,35 +132,19 @@ export default function ChatPage({ connectionId, onSelectConnection }) {
     }
   }
 
+  async function onExport(result) {
+    const token = await getAccessTokenSilently();
+    await exportCsv(token, result.connection_id, result.database, result.sql);
+  }
+
   const canSend = !loading && input.trim().length > 0;
-  const grounded = connectionId && database;
 
   return (
     <div className="page" style={{ maxWidth: 1024, padding: '28px 32px 40px' }}>
       <div className="page-head">
-        <div className="page-eyebrow">Chat IA · Lenguaje natural</div>
+        <div className="page-eyebrow">Chat IA · agente con acceso a tus datos</div>
         <h1 className="page-title">Conversación con la <em>base de datos</em></h1>
-        <p className="page-subtitle">Escribí en criollo. El asistente te ayuda con T-SQL, rendimiento y administración.</p>
-      </div>
-
-      {/* Anclaje opcional a una base: el bot usa su esquema + contexto de negocio */}
-      <div className="row" style={{ marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>Base (opcional):</span>
-        <select value={connectionId || ''} onChange={(e) => onSelectConnection(e.target.value || null)} style={selectStyle}>
-          <option value="">— Sin anclar —</option>
-          {connections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        {connectionId && (
-          <select value={database} onChange={(e) => setDatabase(e.target.value)} style={selectStyle} disabled={databases.length === 0}>
-            {databases.length === 0 && <option value="">(sin bases)</option>}
-            {databases.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-        )}
-        {grounded && (
-          <span className="tag tag-green" style={{ display: 'inline-flex' }}>
-            <Icon name="check" size={10} /> El bot conoce el esquema y el contexto de esta base
-          </span>
-        )}
+        <p className="page-subtitle">Preguntá en criollo. El asistente decide qué base/tablas consultar (según tu Contexto de Negocio), ejecuta la query y te muestra los resultados.</p>
       </div>
 
       <div className="card">
@@ -165,7 +156,7 @@ export default function ChatPage({ connectionId, onSelectConnection }) {
           <span className="tag tag-blue"><Icon name="db" size={10} /> Anthropic Claude</span>
         </div>
 
-        <div ref={bodyRef} style={{ padding: '20px 22px', minHeight: 280, maxHeight: '52vh', overflow: 'auto' }}>
+        <div ref={bodyRef} style={{ padding: '20px 22px', minHeight: 280, maxHeight: '56vh', overflow: 'auto' }}>
           {messages.length === 0 && !loading && (
             <div style={{ textAlign: 'center', color: 'var(--fg-faint)', padding: '48px 16px' }}>
               <div style={{ marginBottom: 8 }}><Icon name="chat" size={28} /></div>
@@ -181,11 +172,16 @@ export default function ChatPage({ connectionId, onSelectConnection }) {
           {messages.map((m, i) => (
             m.role === 'user'
               ? <UserBubble key={i}>{m.content}</UserBubble>
-              : <BotBubble key={i}>{renderContent(m.content)}</BotBubble>
+              : (
+                <div key={i}>
+                  <BotBubble>{renderContent(m.content)}</BotBubble>
+                  {m.result && <ResultTable result={m.result} onExport={onExport} />}
+                </div>
+              )
           ))}
 
           {loading && (
-            <BotBubble><span style={{ color: 'var(--fg-faint)' }}>Pensando…</span></BotBubble>
+            <BotBubble><span style={{ color: 'var(--fg-faint)' }}>Consultando…</span></BotBubble>
           )}
 
           {error && (
@@ -202,12 +198,12 @@ export default function ChatPage({ connectionId, onSelectConnection }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Escribí tu consulta… (⌘/Ctrl + ↵ para enviar)"
+              placeholder="Preguntá por tus datos… (⌘/Ctrl + ↵ para enviar)"
               style={{ width: '100%', border: 'none', resize: 'none', outline: 'none', background: 'transparent', minHeight: 44, fontSize: 14, lineHeight: 1.5, color: 'var(--fg)' }}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
               <span style={{ fontSize: 11.5, color: 'var(--fg-faint)' }}>
-                <Icon name="check" size={11} /> {grounded ? 'Anclado a la base seleccionada' : 'Contextualizado para administración de BD'}
+                <Icon name="check" size={11} /> El bot elige la base y ejecuta (solo lectura, TOP 1000)
               </span>
               <span style={{ flex: 1 }} />
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg-faint)' }}>
@@ -219,9 +215,9 @@ export default function ChatPage({ connectionId, onSelectConnection }) {
             </div>
           </div>
           <div style={{ fontSize: 11, color: 'var(--fg-faint)', marginTop: 8, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-            <span>● Anthropic Claude · contextualizado</span>
-            <span>● Historial en MongoDB</span>
-            <span>● Sesión autenticada (Auth0)</span>
+            <span>● Anthropic Claude · agente</span>
+            <span>● Solo lectura · auditado</span>
+            <span>● Exportá el total a CSV</span>
           </div>
         </div>
       </div>

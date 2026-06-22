@@ -32,6 +32,12 @@ class ExecuteResponse(BaseModel):
     elapsed_ms: int | None = None
 
 
+class ExportRequest(BaseModel):
+    connection_id: str
+    database: str
+    sql: str
+
+
 class QueryHistoryEntry(BaseModel):
     id: str
     timestamp: str

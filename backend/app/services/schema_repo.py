@@ -103,7 +103,7 @@ def schema_summary(engine: Engine, max_tables: int = 60) -> str:
     tables: dict[str, list[str]] = {}
     for r in rows:
         tables.setdefault(f"{r['s']}.{r['t']}", []).append(r["c"])
-    lines = [f"{name}({', '.join(cols)})" for name, cols in list(tables.items())[:max_tables]]
+    lines = [f"{name}({', '.join(cols[:40])})" for name, cols in list(tables.items())[:max_tables]]
     return "\n".join(lines)
 
 

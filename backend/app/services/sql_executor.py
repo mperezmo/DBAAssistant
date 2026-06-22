@@ -27,6 +27,20 @@ def _ms(start: float) -> int:
     return int((time.time() - start) * 1000)
 
 
+def run_select(engine, sql: str, max_rows: int = 1000) -> tuple[list[str], list[list], bool]:
+    """Ejecuta un SELECT de solo lectura. Devuelve (columnas, filas, truncado).
+
+    `truncado` = True si había más filas que `max_rows`.
+    """
+    with engine.connect() as conn:
+        result = conn.execute(text(sql))
+        columns = list(result.keys())
+        fetched = result.fetchmany(max_rows + 1)
+    truncated = len(fetched) > max_rows
+    rows = [[_safe(v) for v in row] for row in fetched[:max_rows]]
+    return columns, rows, truncated
+
+
 def run(engine: Engine, sql: str, mode: str) -> dict:
     start = time.time()
 

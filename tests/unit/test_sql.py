@@ -75,3 +75,26 @@ def test_execute_connection_not_found(client):
         res = client.post("/sql/execute", json={"connection_id": CONN, "database": DB, "sql": "SELECT 1"},
                           headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 404
+
+
+def test_export_requires_auth(client):
+    assert client.post("/sql/export", json={"connection_id": CONN, "database": DB, "sql": "SELECT 1"}).status_code == 401
+
+
+def test_export_rejects_write(client):
+    token = _token(client)
+    res = client.post("/sql/export", json={"connection_id": CONN, "database": DB, "sql": "DELETE FROM t"},
+                      headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 400
+
+
+def test_export_csv(client):
+    token = _token(client)
+    with patch("app.services.connections_repo.get_engine_for_db", return_value=object()), \
+         patch("app.services.sql_executor.run_select", return_value=(["id", "nombre"], [[1, "Marina"], [2, "Tomás"]], False)), \
+         patch("app.services.audit_repo.log"):
+        res = client.post("/sql/export", json={"connection_id": CONN, "database": DB, "sql": "SELECT * FROM clientes"},
+                          headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+    assert "text/csv" in res.headers["content-type"]
+    assert "id,nombre" in res.text and "Marina" in res.text

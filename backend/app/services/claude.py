@@ -118,6 +118,83 @@ def _parse_context_json(text: str) -> dict:
     }
 
 
+AGENT_SYSTEM_PROMPT = (
+    "Eres DBA Assistant. Respondés preguntas consultando las bases de datos del usuario.\n"
+    "Tenés un CATÁLOGO con las conexiones y bases disponibles, su contexto de negocio y su "
+    "esquema (tablas/columnas). El usuario NO indica la base: la elegís vos según el contexto.\n"
+    "Cuando la pregunta requiera datos:\n"
+    "1. Identificá la conexión (connection_id) y base correctas usando el contexto de negocio.\n"
+    "2. Generá una consulta SELECT de SOLO LECTURA en T-SQL. Usá SIEMPRE `SELECT TOP 1000`.\n"
+    "3. Ejecutala con la herramienta run_query.\n"
+    "4. Resumí los resultados en lenguaje claro y conciso. El sistema ya muestra la TABLA de "
+    "resultados aparte, así que NO la repitas entera; comentá lo relevante.\n"
+    "Reglas estrictas: SOLO SELECT (nunca INSERT/UPDATE/DELETE/DROP/ALTER). Si el catálogo no "
+    "alcanza para ubicar el dato, pedí una aclaración. Respondé en español."
+)
+
+_RUN_QUERY_TOOL = {
+    "name": "run_query",
+    "description": "Ejecuta una consulta SELECT de solo lectura sobre una base del catálogo y "
+                   "devuelve las filas (máx 1000). Usá TOP 1000 en el SQL.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "connection_id": {"type": "string", "description": "connection_id del catálogo"},
+            "database": {"type": "string", "description": "nombre de la base"},
+            "sql": {"type": "string", "description": "consulta T-SQL SELECT (con TOP 1000)"},
+        },
+        "required": ["connection_id", "database", "sql"],
+    },
+}
+
+
+def chat_agent(history: list[dict], user_message: str, catalog: str, run_query, max_steps: int = 4):
+    """Agente de chat con tool use. Devuelve (texto_respuesta, ultimo_resultado).
+
+    `run_query(args)` es un callback que ejecuta el SELECT (solo lectura) y devuelve
+    un dict con columns/rows/row_count/truncated/error.
+    """
+    client = _get_client()
+    system = AGENT_SYSTEM_PROMPT + "\n\n=== CATÁLOGO DE BASES ===\n" + (catalog or "(sin bases configuradas)")
+    messages = [{"role": m["role"], "content": m["content"]} for m in history]
+    messages.append({"role": "user", "content": user_message})
+    captured = None
+
+    for _ in range(max_steps):
+        resp = client.messages.create(
+            model=settings.claude_model,
+            max_tokens=max(settings.claude_max_tokens, 1024),
+            system=system,
+            tools=[_RUN_QUERY_TOOL],
+            messages=messages,
+        )
+        if resp.stop_reason != "tool_use":
+            return "".join(b.text for b in resp.content if b.type == "text"), captured
+
+        messages.append({"role": "assistant", "content": resp.content})
+        tool_results = []
+        for block in resp.content:
+            if block.type == "tool_use" and block.name == "run_query":
+                full = run_query(block.input)
+                if not full.get("error"):
+                    captured = full
+                summary = {
+                    "error": full.get("error"),
+                    "columns": full.get("columns"),
+                    "row_count": full.get("row_count"),
+                    "truncated": full.get("truncated"),
+                    "sample_rows": (full.get("rows") or [])[:30],
+                }
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": json.dumps(summary, default=str, ensure_ascii=False),
+                })
+        messages.append({"role": "user", "content": tool_results})
+
+    return "Ejecuté la consulta; revisá la tabla de resultados.", captured
+
+
 def refine_business_context(raw: dict, schema_summary: str | None = None) -> dict:
     """Profesionaliza el contexto 'en criollo' y lo mapea al esquema real (Sprint 9)."""
     client = _get_client()

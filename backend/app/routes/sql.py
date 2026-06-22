@@ -1,11 +1,16 @@
 # backend/app/routes/sql.py
 """Generación y ejecución controlada de SQL (Sprint 5). Protegido por auth."""
+import csv
+import io
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 
 from app.dependencies import get_current_user
 from app.models.auth import User
 from app.models.sql import (
-    ExecuteRequest, ExecuteResponse, GenerateRequest, GenerateResponse, QueryHistoryEntry,
+    ExecuteRequest, ExecuteResponse, ExportRequest, GenerateRequest, GenerateResponse,
+    QueryHistoryEntry,
 )
 from app.services import (
     audit_repo, cache, claude, connections_repo, context_repo, query_history_repo,
@@ -80,3 +85,37 @@ def execute(body: ExecuteRequest, request: Request, user: User = Depends(get_cur
 @router.get("/history", response_model=list[QueryHistoryEntry])
 def history(limit: int = 50, user: User = Depends(get_current_user)):
     return query_history_repo.list_recent(min(limit, 200))
+
+
+_EXPORT_MAX_ROWS = 100_000
+
+
+@router.post("/export")
+def export_csv(body: ExportRequest, request: Request, user: User = Depends(get_current_user)):
+    """Exporta el resultado COMPLETO de un SELECT a CSV (solo lectura, hasta 100k filas)."""
+    if not sql_validator.is_read_only(body.sql):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo se exportan consultas SELECT.")
+    engine = connections_repo.get_engine_for_db(body.connection_id, body.database)
+    if engine is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conexión o base no encontrada")
+    try:
+        columns, rows, _ = sql_executor.run_select(engine, body.sql, _EXPORT_MAX_ROWS)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error al ejecutar: {exc}")
+
+    actor = user.email or user.username
+    audit_repo.log(actor, "query.export", target=f"{body.connection_id}/{body.database}",
+                   detail=f"{len(rows)} filas", ip=_ip(request))
+
+    def _stream():
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(columns)
+        for row in rows:
+            writer.writerow(["" if v is None else v for v in row])
+        yield buffer.getvalue()
+
+    return StreamingResponse(
+        _stream(), media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=dba-assistant-export.csv"},
+    )

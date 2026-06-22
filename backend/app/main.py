@@ -64,6 +64,17 @@ app.include_router(context.router)
 app.include_router(workarounds.router)
 
 
+@app.on_event("startup")
+def _start_scheduler() -> None:
+    # Scheduler de automatización de Workarounds (Sprint 10.1). No-op salvo que
+    # AUTOMATION_ENABLED=true. Tolerante a fallos: no debe impedir el arranque.
+    try:
+        from app.services import scheduler
+        scheduler.start()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 @app.get("/")
 def root():
     return {

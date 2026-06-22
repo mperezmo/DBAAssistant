@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     claude_model: str = "claude-3-5-sonnet-20241022"
     claude_max_tokens: int = 1024
 
+    # ── Automatización de Workarounds (Sprint 10.1) ───────────
+    # Scheduler interno: evalúa las reglas cada N segundos. Apagado por defecto
+    # (auto-remediar es sensible); activar con AUTOMATION_ENABLED=true.
+    automation_enabled: bool = False
+    automation_interval_seconds: int = 60
+
     # ── Conexión "target" para análisis (Sprint 4) ────────────
     # SQL Server externo a analizar (p. ej. tu instancia local). Si
     # target_sql_host está vacío, el análisis usa la conexión principal.

@@ -117,6 +117,71 @@ def get_engine_for_db(connection_id: str, database: str) -> Engine | None:
     return eng
 
 
+def get_host_control(connection_id: str) -> dict | None:
+    """Config WinRM pública (sin password) de la conexión. None si no existe."""
+    oid = _oid(connection_id)
+    if not oid:
+        return None
+    raw = _col.find_one({"_id": oid})
+    if not raw:
+        return None
+    hc = raw.get("host_control") or {}
+    return {
+        "win_host": hc.get("win_host", ""),
+        "service_name": hc.get("service_name", ""),
+        "username": hc.get("username", ""),
+        "port": hc.get("port", 5985),
+        "transport": hc.get("transport", "ntlm"),
+        "has_password": bool(hc.get("password")),
+    }
+
+
+def set_host_control(connection_id: str, data: dict) -> bool:
+    """Guarda la config WinRM. Si password viene vacío, conserva el ya guardado."""
+    oid = _oid(connection_id)
+    if not oid:
+        return False
+    raw = _col.find_one({"_id": oid})
+    if not raw:
+        return False
+    current = raw.get("host_control") or {}
+    password = data.get("password") or current.get("password", "")
+    hc = {
+        "win_host": data.get("win_host", ""),
+        "service_name": data.get("service_name", ""),
+        "username": data.get("username", ""),
+        "port": data.get("port", 5985),
+        "transport": data.get("transport", "ntlm"),
+        "password": password,
+    }
+    _col.update_one({"_id": oid}, {"$set": {"host_control": hc}})
+    return True
+
+
+def host_control_config(connection_id: str) -> dict | None:
+    """Config WinRM lista para usar (CON password y defaults resueltos). Uso interno.
+
+    None si no hay conexión o no se configuró el servicio/usuario WinRM.
+    """
+    oid = _oid(connection_id)
+    if not oid:
+        return None
+    raw = _col.find_one({"_id": oid})
+    if not raw:
+        return None
+    hc = raw.get("host_control") or {}
+    if not hc.get("service_name") or not hc.get("username"):
+        return None
+    return {
+        "host": hc.get("win_host") or raw["host"],
+        "port": hc.get("port", 5985),
+        "transport": hc.get("transport", "ntlm"),
+        "username": hc["username"],
+        "password": hc.get("password", ""),
+        "service_name": hc["service_name"],
+    }
+
+
 def test(data: dict) -> tuple[bool, str | None, str | None]:
     """Prueba la conexión a la instancia (sin guardarla). Devuelve (ok, error, server)."""
     try:

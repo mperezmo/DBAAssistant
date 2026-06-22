@@ -209,6 +209,20 @@ BUILTINS: list[dict] = [
         "diagnose_sql": _DIAG_CHECKPOINT,
         "apply_sql": _APPLY_CHECKPOINT,
     },
+    {
+        # Workaround de tipo SERVICIO (Sprint 10.1): no usa T-SQL. La ruta lo despacha
+        # por WinRM (host_control) usando la config de la conexión. Diagnóstico = estado
+        # del servicio; aplicar = Start-Service. Sirve aun con el motor SQL caído.
+        "key": "start_sql_service",
+        "name": "Iniciar servicio de SQL Server (Windows)",
+        "description": "Si el servicio de SQL Server está caído, lo inicia a nivel Windows vía WinRM.",
+        "category": "Disponibilidad",
+        "severity": "critical",
+        "kind": "service",
+        "requires_server_state": False,
+        "diagnose_sql": None,
+        "apply_sql": None,
+    },
 ]
 
 _BY_KEY = {w["key"]: w for w in BUILTINS}

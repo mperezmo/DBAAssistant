@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../components/Icon.jsx';
 import {
   getHealth, getConnections, createConnection, testConnection, deleteConnection,
-  getCacheStats, clearCache,
+  getCacheStats, clearCache, getHostControl, putHostControl,
 } from '../api.js';
+
+const HC_EMPTY = { win_host: '', service_name: 'MSSQLSERVER', username: '', password: '', port: 5985, transport: 'ntlm' };
 
 function ServiceCard({ name, ok }) {
   const c = ok ? 'var(--sage)' : 'var(--terracotta)';
@@ -35,6 +37,9 @@ export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
   const [testResult, setTestResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [hcFor, setHcFor] = useState(null);   // id de la conexión editando WinRM
+  const [hc, setHc] = useState(HC_EMPTY);
+  const [hcMsg, setHcMsg] = useState('');
 
   const load = useCallback(async () => {
     setError('');
@@ -114,6 +119,34 @@ export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
       await deleteConnection(token, id);
       if (connectionId === id) onSelectConnection(null);
       await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openHostControl(id) {
+    setHcMsg('');
+    if (hcFor === id) { setHcFor(null); return; }
+    setHcFor(id);
+    setHc(HC_EMPTY);
+    try {
+      const token = await getAccessTokenSilently();
+      const cfg = await getHostControl(token, id);
+      setHc({ ...HC_EMPTY, ...cfg, password: '' });
+      if (cfg.has_password) setHcMsg('Hay una contraseña guardada (dejá el campo vacío para conservarla).');
+    } catch (e) { setError(e.message); }
+  }
+
+  async function saveHostControl(id) {
+    setBusy(true);
+    setHcMsg('');
+    setError('');
+    try {
+      const token = await getAccessTokenSilently();
+      await putHostControl(token, id, { ...hc, port: Number(hc.port) });
+      setHcMsg('Configuración WinRM guardada.');
     } catch (e) {
       setError(e.message);
     } finally {
@@ -215,18 +248,50 @@ export default function AdminPage({ connectionId, onSelectConnection, goTo }) {
               <tr><td colSpan={5} style={{ color: 'var(--fg-faint)' }}>No hay conexiones. Agregá una con "Nueva conexión".</td></tr>
             )}
             {conns.map((c) => (
-              <tr key={c.id}>
-                <td className="metric-mono" style={{ fontWeight: 600 }}>{c.name}</td>
-                <td className="metric-mono" style={{ fontSize: 11.5, color: 'var(--fg-muted)' }}>{c.host}:{c.port}</td>
-                <td className="metric-mono" style={{ fontSize: 12 }}>{c.username}</td>
-                <td>{connectionId === c.id ? <span className="tag tag-blue">activa</span> : <span className="tag">—</span>}</td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => { onSelectConnection(c.id); goTo('schema'); }}>Usar</button>{' '}
-                  <button className="btn btn-ghost btn-sm" onClick={() => onDelete(c.id)} disabled={busy} title="Borrar">
-                    <Icon name="x" size={13} />
-                  </button>
-                </td>
-              </tr>
+              <Fragment key={c.id}>
+                <tr>
+                  <td className="metric-mono" style={{ fontWeight: 600 }}>{c.name}</td>
+                  <td className="metric-mono" style={{ fontSize: 11.5, color: 'var(--fg-muted)' }}>{c.host}:{c.port}</td>
+                  <td className="metric-mono" style={{ fontSize: 12 }}>{c.username}</td>
+                  <td>{connectionId === c.id ? <span className="tag tag-blue">activa</span> : <span className="tag">—</span>}</td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { onSelectConnection(c.id); goTo('schema'); }}>Usar</button>{' '}
+                    <button className={`btn btn-sm ${hcFor === c.id ? 'btn-primary' : 'btn-ghost'}`} onClick={() => openHostControl(c.id)} title="Control de servicio Windows (WinRM)">WinRM</button>{' '}
+                    <button className="btn btn-ghost btn-sm" onClick={() => onDelete(c.id)} disabled={busy} title="Borrar">
+                      <Icon name="x" size={13} />
+                    </button>
+                  </td>
+                </tr>
+                {hcFor === c.id && (
+                  <tr>
+                    <td colSpan={5} style={{ background: 'var(--bg-sunk)' }}>
+                      <div className="card-eyebrow" style={{ marginBottom: 8 }}>Control de host · WinRM (para "Iniciar servicio de SQL Server")</div>
+                      <div className="grid-3" style={{ gap: 12 }}>
+                        <div className="field"><label>Host WinRM</label><input value={hc.win_host} onChange={(e) => setHc({ ...hc, win_host: e.target.value })} placeholder={c.host} /></div>
+                        <div className="field"><label>Servicio</label><input value={hc.service_name} onChange={(e) => setHc({ ...hc, service_name: e.target.value })} placeholder="MSSQLSERVER" /></div>
+                        <div className="field"><label>Puerto</label><input value={hc.port} onChange={(e) => setHc({ ...hc, port: e.target.value })} placeholder="5985" /></div>
+                        <div className="field"><label>Usuario Windows</label><input value={hc.username} onChange={(e) => setHc({ ...hc, username: e.target.value })} placeholder=".\\Administrador" /></div>
+                        <div className="field"><label>Contraseña</label><input type="password" value={hc.password} onChange={(e) => setHc({ ...hc, password: e.target.value })} /></div>
+                        <div className="field"><label>Transport</label>
+                          <select value={hc.transport} onChange={(e) => setHc({ ...hc, transport: e.target.value })}>
+                            <option value="ntlm">ntlm</option>
+                            <option value="basic">basic</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--fg-faint)', margin: '8px 0' }}>
+                        Requiere <strong>Enable-PSRemoting</strong> en la máquina Windows y un usuario con permiso sobre servicios.
+                        Instancia con nombre: usá <span className="metric-mono">MSSQL$NOMBRE</span>.
+                      </div>
+                      {hcMsg && <div className="tag tag-green" style={{ display: 'inline-flex', marginBottom: 8 }}><Icon name="check" size={11} /> {hcMsg}</div>}
+                      <div className="row" style={{ gap: 8 }}>
+                        <button className="btn btn-primary btn-sm" onClick={() => saveHostControl(c.id)} disabled={busy || !hc.service_name || !hc.username}>Guardar WinRM</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setHcFor(null)}>Cerrar</button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

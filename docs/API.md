@@ -23,6 +23,8 @@ Todos los endpoints (salvo `/` y `/health`) requieren `Authorization: Bearer <JW
 - `GET /connections` · `POST /connections` · `DELETE /connections/{id}`
 - `POST /connections/test` — prueba sin guardar.
 - `GET /connections/{id}/databases` — bases analizables (excluye sistema/ReportServer).
+- `GET`/`PUT /connections/{id}/host-control` — config WinRM para controlar el servicio
+  Windows (Sprint 10.1). La password nunca se devuelve.
 
 ### Esquema (por conexión + base)
 - `GET /schema/{conn}/{db}/overview`
@@ -56,8 +58,18 @@ Todos los endpoints (salvo `/` y `/health`) requieren `Authorization: Bearer <JW
 - `DELETE /workarounds/{key}` — borra un workaround custom (los built-in no se borran).
 - `POST /workarounds/{key}/run` — ejecuta sobre `connection_id`+`database`:
   `mode=diagnose` (solo lectura, muestra qué se vería afectado) o `mode=apply`
-  (ejecuta la remediación real). Auditado (`workaround.run`).
+  (ejecuta la remediación real). Auditado (`workaround.run`). Los workarounds
+  `kind=service` (ej. `start_sql_service`) actúan por WinRM, no por T-SQL.
 - `GET /workarounds/runs` — historial de ejecuciones.
+
+### Automatización de workarounds (Sprint 10.1)
+- `GET`/`POST /workarounds/rules` — reglas "si y solo si" (workaround + conexión/base
+  + umbral `min_rows` + `cooldown_seconds`).
+- `PUT`/`DELETE /workarounds/rules/{id}` — editar (habilitar/deshabilitar) o borrar.
+- `POST /workarounds/rules/evaluate` — evalúa todas las reglas habilitadas ahora:
+  corre el diagnóstico y, si detecta el problema, aplica la remediación
+  (auditado `workaround.evaluate` / `workaround.auto`). El scheduler interno
+  (`AUTOMATION_ENABLED`) hace lo mismo cada `AUTOMATION_INTERVAL_SECONDS`.
 
 ### Auditoría · Caché
 - `GET /audit`

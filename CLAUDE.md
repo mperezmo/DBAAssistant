@@ -20,6 +20,16 @@ orquestado con **Docker Compose**. Diseño en `design/DBA Assistant.html`.
   statistics, shrink de log, limpiar plan cache, checkpoint) + CRUD de
   workarounds custom (Mongo). Cada uno corre en **diagnóstico** (solo lectura) o
   **aplicar** (remediación real, AUTOCOMMIT), por conexión+base, auditado.
+- **Sprint 10.1 ✅** Extensiones de Workarounds:
+  - **Workaround de servicio (`start_sql_service`)**: inicia el servicio de SQL
+    Server a nivel **Windows vía WinRM** (`services/host_control.py`, `pywinrm`),
+    útil cuando el motor está caído (sin conexión T-SQL). Config WinRM por
+    conexión en *Panel Admin* (`/connections/{id}/host-control`).
+  - **Automatización por reglas** (`workaround_rules`): "si y solo si" el
+    diagnóstico detecta el problema (≥ umbral), aplica la remediación. Motor
+    `services/automation.py` (`workaround.auto`), botón **Evaluar ahora**
+    (`/workarounds/rules/evaluate`) y **scheduler interno** opt-in
+    (`AUTOMATION_ENABLED`, `services/scheduler.py`).
 - **Pendientes (plan)** para las opciones de menú deshabilitadas:
   **Sprint 11 Alertas**, **Sprint 12 Dashboard/Inicio**.
 
@@ -54,6 +64,9 @@ orquestado con **Docker Compose**. Diseño en `design/DBA Assistant.html`.
 ## Config / secretos
 `.env` (gitignored): `SQL_SERVER_*`, `MONGODB_*`, `REDIS_URL`, `AUTH_MODE=auth0`
 (+ `AUTH0_DOMAIN/CLIENT_ID/AUDIENCE`), `ANTHROPIC_API_KEY`, `CLAUDE_MODEL`.
+Automatización (Sprint 10.1, opcional): `AUTOMATION_ENABLED=false`,
+`AUTOMATION_INTERVAL_SECONDS=60`. Credenciales WinRM: por conexión (Mongo, texto
+plano dev/TFI; la API nunca devuelve la password).
 
 ## Docs
 `CONTEXT.md` (estado + historial), `README.md`, `docs/USER_GUIDE.md`,

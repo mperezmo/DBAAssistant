@@ -14,6 +14,11 @@ redis==5.2.1
 python-dotenv==1.0.1
 httpx==0.28.1
 
+# Control de host a nivel SO vía WinRM (Sprint 10.1): iniciar el servicio de
+# SQL Server cuando está caído. requests_ntlm habilita el transport NTLM.
+pywinrm==0.4.3
+requests_ntlm==1.3.0
+
 # IA / Claude (Sprint 3)
 anthropic==0.40.0
 

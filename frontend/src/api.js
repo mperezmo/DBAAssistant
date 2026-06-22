@@ -102,3 +102,14 @@ export const createWorkaround = (token, body) => authSend(token, 'POST', '/worka
 export const deleteWorkaround = (token, key) => authSend(token, 'DELETE', `/workarounds/${e(key)}`);
 export const runWorkaround = (token, key, body) => authSend(token, 'POST', `/workarounds/${e(key)}/run`, body);
 export const getWorkaroundRuns = (token) => authGet(token, '/workarounds/runs?limit=50');
+
+// ── Control de host WinRM por conexión (Sprint 10.1) ──
+export const getHostControl = (token, conn) => authGet(token, `/connections/${conn}/host-control`);
+export const putHostControl = (token, conn, body) => authSend(token, 'PUT', `/connections/${conn}/host-control`, body);
+
+// ── Automatización de workarounds por reglas (Sprint 10.1) ──
+export const getRules = (token) => authGet(token, '/workarounds/rules');
+export const createRule = (token, body) => authSend(token, 'POST', '/workarounds/rules', body);
+export const updateRule = (token, id, body) => authSend(token, 'PUT', `/workarounds/rules/${id}`, body);
+export const deleteRule = (token, id) => authSend(token, 'DELETE', `/workarounds/rules/${id}`);
+export const evaluateRules = (token) => authSend(token, 'POST', '/workarounds/rules/evaluate');

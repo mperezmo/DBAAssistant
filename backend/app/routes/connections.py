@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.dependencies import get_current_user
 from app.models.auth import User
-from app.models.connection import Connection, ConnectionCreate, ConnectionTestResult
+from app.models.connection import (
+    Connection, ConnectionCreate, ConnectionTestResult, HostControl, HostControlIn,
+)
 from app.services import audit_repo, cache, connections_repo
 
 router = APIRouter(prefix="/connections", tags=["connections"])
@@ -60,3 +62,22 @@ def delete_connection(connection_id: str, request: Request, user: User = Depends
     cache.invalidate_connection(connection_id)
     audit_repo.log(user.email or user.username, "connection.delete",
                    target=connection_id, ip=_ip(request))
+
+
+@router.get("/{connection_id}/host-control", response_model=HostControl)
+def read_host_control(connection_id: str, user: User = Depends(get_current_user)):
+    """Config WinRM (sin password) para controlar el servicio Windows (Sprint 10.1)."""
+    hc = connections_repo.get_host_control(connection_id)
+    if hc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conexión no encontrada")
+    return hc
+
+
+@router.put("/{connection_id}/host-control", response_model=HostControl)
+def write_host_control(connection_id: str, body: HostControlIn, request: Request,
+                       user: User = Depends(get_current_user)):
+    if not connections_repo.set_host_control(connection_id, body.model_dump()):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conexión no encontrada")
+    audit_repo.log(user.email or user.username, "connection.host_control",
+                   target=connection_id, detail=body.service_name or None, ip=_ip(request))
+    return connections_repo.get_host_control(connection_id)

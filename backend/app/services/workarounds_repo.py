@@ -9,12 +9,23 @@ Dos colecciones:
 """
 from datetime import datetime, timezone
 
+from bson import ObjectId
+from bson.errors import InvalidId
+
 from app.config import get_settings
 from app.services.db import mongo_client
 
 settings = get_settings()
 _col = mongo_client[settings.mongodb_database]["workarounds"]
 _runs = mongo_client[settings.mongodb_database]["workaround_runs"]
+_rules = mongo_client[settings.mongodb_database]["workaround_rules"]
+
+
+def _oid(value: str) -> ObjectId | None:
+    try:
+        return ObjectId(value)
+    except (InvalidId, TypeError):
+        return None
 
 
 # ── Workarounds custom ───────────────────────────────────────────────────────
@@ -106,3 +117,79 @@ def list_runs(limit: int = 50) -> list[dict]:
             "error": d.get("error"),
         })
     return out
+
+
+# ── Reglas de automatización ─────────────────────────────────────────────────
+
+def _rule_public(doc: dict) -> dict:
+    def _iso(v):
+        return v.isoformat() if v else None
+    return {
+        "id": str(doc["_id"]),
+        "name": doc.get("name", ""),
+        "workaround_key": doc.get("workaround_key", ""),
+        "connection_id": doc.get("connection_id", ""),
+        "database": doc.get("database", ""),
+        "enabled": doc.get("enabled", True),
+        "min_rows": doc.get("min_rows", 1),
+        "cooldown_seconds": doc.get("cooldown_seconds", 300),
+        "last_triggered": _iso(doc.get("last_triggered")),
+        "last_checked": _iso(doc.get("last_checked")),
+        "last_status": doc.get("last_status"),
+    }
+
+
+def list_rules() -> list[dict]:
+    return [_rule_public(d) for d in _rules.find().sort("created_at", 1)]
+
+
+def get_rule(rule_id: str) -> dict | None:
+    oid = _oid(rule_id)
+    if not oid:
+        return None
+    doc = _rules.find_one({"_id": oid})
+    return _rule_public(doc) if doc else None
+
+
+def create_rule(data: dict) -> dict:
+    doc = {**data, "created_at": datetime.now(timezone.utc)}
+    res = _rules.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return _rule_public(doc)
+
+
+def update_rule(rule_id: str, data: dict) -> dict | None:
+    oid = _oid(rule_id)
+    if not oid:
+        return None
+    fields = {k: v for k, v in data.items() if v is not None}
+    if fields:
+        _rules.update_one({"_id": oid}, {"$set": fields})
+    return get_rule(rule_id)
+
+
+def delete_rule(rule_id: str) -> bool:
+    oid = _oid(rule_id)
+    if not oid:
+        return False
+    return _rules.delete_one({"_id": oid}).deleted_count > 0
+
+
+def mark_checked(rule_id: str, triggered: bool, status: str | None = None) -> None:
+    oid = _oid(rule_id)
+    if not oid:
+        return
+    now = datetime.now(timezone.utc)
+    fields = {"last_checked": now, "last_status": status}
+    if triggered:
+        fields["last_triggered"] = now
+    try:
+        _rules.update_one({"_id": oid}, {"$set": fields})
+    except Exception:
+        pass
+
+
+def list_enabled_rules_raw() -> list[dict]:
+    """Reglas habilitadas con su doc crudo (incluye last_triggered como datetime),
+    para el motor de evaluación (necesita calcular cooldown)."""
+    return list(_rules.find({"enabled": True}))

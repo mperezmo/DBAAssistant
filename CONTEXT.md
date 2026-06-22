@@ -5,7 +5,8 @@
 >
 > **Última actualización:** 2026-06-22
 > **Estado actual:** Sprints 1-8 ✅ (core completo) · Sprint 9 ✅ (Contexto de Negocio)
-> · Sprint 10 ✅ (Workarounds).
+> · Sprint 10 ✅ (Workarounds) · Sprint 10.1 ✅ (servicio Windows vía WinRM +
+> automatización por reglas).
 > Opciones de menú pendientes (plan 11-12): **Alertas**, **Dashboard/Inicio**.
 > Deploy real a Azure pendiente solo de credenciales del usuario.
 >
@@ -151,6 +152,38 @@
 > - Frontend: `Workarounds.jsx` (selector conexión/base, grid de tarjetas estilo
 >   diseño, filtros por categoría + búsqueda, modal de ejecución diagnóstico/aplicar
 >   con confirmación, modal "Nuevo workaround"). 78 tests.
+>
+> **Sprint 10.1 — Workarounds: servicio Windows (WinRM) + automatización:**
+> - **Iniciar el servicio de SQL Server a nivel SO** cuando está caído (en ese estado
+>   no hay conexión T-SQL). El backend (Docker/Linux) actúa por **WinRM**
+>   (`services/host_control.py`, dep `pywinrm`): se conecta a la máquina Windows
+>   (`host.docker.internal` o IP) con credenciales Windows y ejecuta `Start-Service`.
+>   - Nuevo **`kind`** en los workarounds: `"sql"` (T-SQL, default) | `"service"`.
+>     Built-in `start_sql_service` (`kind=service`, categoría *Disponibilidad*). La
+>     ruta `run` despacha por kind: diagnose = `Get-Service` (1 fila "problema" si no
+>     está Running), apply = `Start-Service`.
+>   - **Config WinRM por conexión** (no por SQL): `GET/PUT /connections/{id}/host-control`
+>     (`win_host`, `service_name`, `username`, `password`, `port`, `transport`). Se
+>     guarda en el doc de la conexión (`connections_repo.{get,set}_host_control`,
+>     `host_control_config`). Form en *Panel Admin* (botón "WinRM" por fila). Auditado
+>     `connection.host_control`. ⚠️ Credenciales en texto plano (dev/TFI), nunca se devuelven.
+> - **Automatización por reglas** ("SI Y SOLO SI"): la regla corre el **diagnóstico**
+>   del workaround y, si detecta ≥ `min_rows` problemas, **aplica** la remediación.
+>   - `WorkaroundRule` en Mongo (`workaround_rules`): workaround_key, conexión+base,
+>     enabled, min_rows, cooldown_seconds, last_triggered/checked/status. CRUD en
+>     `workarounds_repo` y rutas `GET/POST /workarounds/rules`, `PUT/DELETE
+>     /workarounds/rules/{id}`.
+>   - Motor `services/automation.py` (`evaluate_rules`): respeta cooldown, tolera fallos
+>     por regla, audita `workaround.auto` y registra en `workaround_runs` (mode `auto`).
+>   - Disparo: **manual** `POST /workarounds/rules/evaluate` (botón "Evaluar ahora") y
+>     **scheduler interno** opt-in (`services/scheduler.py`, hilo daemon) gobernado por
+>     `AUTOMATION_ENABLED` (default false) y `AUTOMATION_INTERVAL_SECONDS` (default 60).
+>     Arranca en el `startup` de FastAPI (los tests no lo disparan).
+>   - Ejemplo de uso: regla con `start_sql_service` + umbral 1 → si el servicio está
+>     caído, lo inicia solo.
+> - Frontend: form WinRM por conexión en `Admin.jsx`; en `Workarounds.jsx`, categoría
+>   *Disponibilidad*, modal adaptado para `kind=service`, y panel **Automatización**
+>   (reglas con toggle/umbral/cooldown + "Evaluar ahora"). 98 tests.
 
 ---
 
@@ -181,6 +214,7 @@ recomendaciones de optimización.
 | **8** | Testing & Docs | ✅ **COMPLETADO** |
 | **9** | Contexto de Negocio + IA (chat-agente) | ✅ **COMPLETADO** |
 | **10** | Workarounds (biblioteca de remediación) | ✅ **COMPLETADO** |
+| **10.1** | Workarounds: servicio Windows (WinRM) + automatización por reglas | ✅ **COMPLETADO** |
 
 ---
 

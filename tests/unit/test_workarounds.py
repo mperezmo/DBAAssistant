@@ -144,3 +144,58 @@ def test_delete_custom_not_found(client):
          patch("app.services.workarounds_repo.delete_custom", return_value=False):
         res = client.delete("/workarounds/ghost", headers=_auth(client))
     assert res.status_code == 404
+
+
+# ── Workaround de servicio (kind=service, WinRM) · Sprint 10.1 ────────────────
+
+_HC = {"host": "host.docker.internal", "port": 5985, "transport": "ntlm",
+       "username": "u", "password": "p", "service_name": "MSSQLSERVER"}
+
+
+def test_service_diagnose_stopped_returns_problem_row(client):
+    with patch("app.services.connections_repo.host_control_config", return_value=_HC), \
+         patch("app.services.host_control.service_status",
+               return_value={"service_name": "MSSQLSERVER", "status": "Stopped"}), \
+         patch("app.services.workarounds_repo.log_run"), \
+         patch("app.services.audit_repo.log") as mock_audit:
+        res = client.post("/workarounds/start_sql_service/run",
+                          json={"connection_id": CONN, "mode": "diagnose"}, headers=_auth(client))
+    assert res.status_code == 200
+    body = res.json()
+    assert body["rows"] == [["MSSQLSERVER", "Stopped"]]
+    assert "Stopped" in body["message"]
+    assert mock_audit.call_args.args[1] == "workaround.run"
+
+
+def test_service_diagnose_running_no_rows(client):
+    with patch("app.services.connections_repo.host_control_config", return_value=_HC), \
+         patch("app.services.host_control.service_status",
+               return_value={"service_name": "MSSQLSERVER", "status": "Running"}), \
+         patch("app.services.workarounds_repo.log_run"), \
+         patch("app.services.audit_repo.log"):
+        res = client.post("/workarounds/start_sql_service/run",
+                          json={"connection_id": CONN, "mode": "diagnose"}, headers=_auth(client))
+    assert res.status_code == 200
+    assert res.json()["rows"] == []
+
+
+def test_service_apply_starts_service(client):
+    with patch("app.services.connections_repo.host_control_config", return_value=_HC), \
+         patch("app.services.host_control.start_service",
+               return_value={"service_name": "MSSQLSERVER", "status": "Running"}), \
+         patch("app.services.workarounds_repo.log_run"), \
+         patch("app.services.audit_repo.log") as mock_audit:
+        res = client.post("/workarounds/start_sql_service/run",
+                          json={"connection_id": CONN, "mode": "apply"}, headers=_auth(client))
+    assert res.status_code == 200
+    assert "Running" in res.json()["message"]
+    assert mock_audit.call_args.args[1] == "workaround.run"
+
+
+def test_service_without_host_control_400(client):
+    with patch("app.services.connections_repo.host_control_config", return_value=None), \
+         patch("app.services.workarounds_repo.log_run"), \
+         patch("app.services.audit_repo.log"):
+        res = client.post("/workarounds/start_sql_service/run",
+                          json={"connection_id": CONN, "mode": "diagnose"}, headers=_auth(client))
+    assert res.status_code == 400

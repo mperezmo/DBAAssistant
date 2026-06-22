@@ -29,7 +29,8 @@ class AlertRuleCreate(BaseModel):
     severity: str = "warning"        # info | warning | critical
     suggested_workaround_key: str | None = None
     auto_remediate: bool = False
-    auto_threshold: float | None = None   # límite máximo: si se cruza, ejecuta el workaround
+    auto_threshold: float | None = None       # disparo por MAGNITUD: si el valor cruza este límite
+    auto_after_seconds: int | None = None     # disparo por DURACIÓN: si la alerta lleva activa ≥ N seg
     cooldown_seconds: int = 300
     enabled: bool = True
 
@@ -42,6 +43,7 @@ class AlertRuleUpdate(BaseModel):
     suggested_workaround_key: str | None = None
     auto_remediate: bool | None = None
     auto_threshold: float | None = None
+    auto_after_seconds: int | None = None
     cooldown_seconds: int | None = None
     enabled: bool | None = None
 
@@ -87,6 +89,7 @@ class AlertTemplate(BaseModel):
     suggested_workaround_key: str | None = None
     auto_remediate: bool = False
     auto_threshold: float | None = None
+    auto_after_seconds: int | None = None
     description: str = ""
 
 

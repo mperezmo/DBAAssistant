@@ -76,6 +76,7 @@ def seed_rules(connection_id: str, request: Request, database: str = "",
             "metric": tpl["metric"], "operator": tpl["operator"], "threshold": tpl["threshold"],
             "severity": tpl["severity"], "suggested_workaround_key": tpl.get("suggested_workaround_key"),
             "auto_remediate": tpl.get("auto_remediate", False), "auto_threshold": tpl.get("auto_threshold"),
+            "auto_after_seconds": tpl.get("auto_after_seconds"),
             "cooldown_seconds": 300, "enabled": True,
         }))
     audit_repo.log(user.email or user.username, "alert.rule_seed",

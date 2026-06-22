@@ -256,7 +256,7 @@ function AlertDetail({ a, goTo, onResolve, onFalse, onAssign }) {
 
 const EMPTY_RULE = {
   name: '', metric: 'cpu_percent', operator: 'gt', threshold: 85, severity: 'warning',
-  database: '', suggested_workaround_key: '', auto_remediate: false, auto_threshold: '',
+  database: '', suggested_workaround_key: '', auto_remediate: false, auto_threshold: '', auto_after_seconds: '',
 };
 
 function RulesManager({ connectionId, rules, wkKeys, busy, getToken, onChange, setError, goTo }) {
@@ -282,6 +282,7 @@ function RulesManager({ connectionId, rules, wkKeys, busy, getToken, onChange, s
         severity: form.severity, suggested_workaround_key: form.suggested_workaround_key || null,
         auto_remediate: form.auto_remediate,
         auto_threshold: form.auto_threshold === '' ? null : Number(form.auto_threshold),
+        auto_after_seconds: form.auto_after_seconds === '' ? null : Number(form.auto_after_seconds),
       });
       setShowForm(false);
       setForm(EMPTY_RULE);
@@ -342,10 +343,11 @@ function RulesManager({ connectionId, rules, wkKeys, busy, getToken, onChange, s
                 {wkKeys.map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
-            <div><label style={lbl}>Umbral máximo (auto)</label><input style={field} value={form.auto_threshold} onChange={set('auto_threshold')} placeholder="ej. 99" /></div>
+            <div><label style={lbl}>Auto por magnitud (≥ valor)</label><input style={field} value={form.auto_threshold} onChange={set('auto_threshold')} placeholder="ej. 99" /></div>
+            <div><label style={lbl}>Auto por duración (seg)</label><input style={field} value={form.auto_after_seconds} onChange={set('auto_after_seconds')} placeholder="ej. 120" /></div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
               <label style={{ ...lbl, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={form.auto_remediate} onChange={set('auto_remediate')} /> Auto-remediar al máximo
+                <input type="checkbox" checked={form.auto_remediate} onChange={set('auto_remediate')} /> Auto-remediar
               </label>
             </div>
           </div>
@@ -370,7 +372,9 @@ function RulesManager({ connectionId, rules, wkKeys, busy, getToken, onChange, s
                 <td className="metric-mono" style={{ fontSize: 11.5 }}>{METRIC_LABEL[r.metric] || r.metric}{r.database ? ` · ${r.database}` : ''}</td>
                 <td className="metric-mono">{OP_SYM[r.operator]} {r.threshold}</td>
                 <td><span className={`tag ${SEV_TAG[r.severity]}`}>{r.severity}</span></td>
-                <td className="metric-mono">{r.auto_remediate ? `≥ ${r.auto_threshold ?? '—'}` : '—'}</td>
+                <td className="metric-mono">{r.auto_remediate
+                  ? [r.auto_threshold != null ? `≥ ${r.auto_threshold}` : null, r.auto_after_seconds != null ? `${r.auto_after_seconds}s` : null].filter(Boolean).join(' · ') || 'al instante'
+                  : '—'}</td>
                 <td className="metric-mono" style={{ fontSize: 11 }}>{r.suggested_workaround_key || '—'}</td>
                 <td className="metric-mono">{r.last_value ?? '—'}</td>
                 <td>

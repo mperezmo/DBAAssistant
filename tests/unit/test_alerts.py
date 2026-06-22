@@ -3,7 +3,7 @@
 
 Repos y resolución de métricas mockeados (no tocan DMVs ni Mongo reales).
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from bson import ObjectId
@@ -191,6 +191,51 @@ def test_engine_auto_remediates_at_max():
     apply_mock.assert_called_once()
     mock_mar.assert_called_once()
     assert mock_audit.call_args.args[1] == "alert.auto_remediate"
+
+
+def test_engine_auto_remediates_after_duration():
+    """Servicio caído por más de N seg → auto-inicia (disparo por duración)."""
+    from app.services import alerts
+    raw = _raw(metric="service_down", operator="gte", threshold=1.0,
+               suggested_workaround_key="start_sql_service", auto_remediate=True,
+               auto_threshold=None, auto_after_seconds=60)
+    old = {"id": "a1", "created_at": (datetime.now(timezone.utc) - timedelta(seconds=120)).isoformat()}
+    apply_mock = MagicMock(return_value="ok")
+    with patch("app.services.alerts_repo.list_enabled_rules_raw", return_value=[raw]), \
+         patch("app.services.connections_repo.list_all", return_value=[]), \
+         patch("app.services.alerts._metric_value", return_value=1.0), \
+         patch("app.services.alerts_repo.raise_or_update", return_value=old), \
+         patch("app.services.alerts_repo.mark_auto_remediated"), \
+         patch("app.services.alerts_repo.mark_checked"), \
+         patch("app.services.workaround_exec.resolve", return_value={"key": "start_sql_service", "kind": "service"}), \
+         patch("app.services.workaround_exec.apply", apply_mock), \
+         patch("app.services.workarounds_repo.log_run"), \
+         patch("app.services.audit_repo.log") as mock_audit:
+        out = alerts.evaluate("tester")
+    assert out[0]["auto_remediated"] is True
+    apply_mock.assert_called_once()
+    assert mock_audit.call_args.args[1] == "alert.auto_remediate"
+
+
+def test_engine_auto_waits_until_duration_met():
+    """Recién caído (no llegó a N seg) → alerta sí, pero NO auto-remedia todavía."""
+    from app.services import alerts
+    raw = _raw(metric="service_down", operator="gte", threshold=1.0,
+               suggested_workaround_key="start_sql_service", auto_remediate=True,
+               auto_threshold=None, auto_after_seconds=300)
+    fresh = {"id": "a1", "created_at": datetime.now(timezone.utc).isoformat()}
+    apply_mock = MagicMock()
+    with patch("app.services.alerts_repo.list_enabled_rules_raw", return_value=[raw]), \
+         patch("app.services.connections_repo.list_all", return_value=[]), \
+         patch("app.services.alerts._metric_value", return_value=1.0), \
+         patch("app.services.alerts_repo.raise_or_update", return_value=fresh), \
+         patch("app.services.alerts_repo.mark_checked"), \
+         patch("app.services.workaround_exec.apply", apply_mock), \
+         patch("app.services.audit_repo.log"):
+        out = alerts.evaluate("tester")
+    assert out[0]["breached"] is True and out[0]["auto_remediated"] is False
+    assert "sostenida" in (out[0]["status"] or "")
+    apply_mock.assert_not_called()
 
 
 def test_engine_auto_skipped_in_cooldown():

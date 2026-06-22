@@ -194,10 +194,13 @@
 >   WinRM, `instance_unreachable`).
 > - **Motor** `alerts.evaluate`: compara valor vs umbral; **levanta/actualiza** alerta
 >   (dedup: una `active` por regla), **resuelve** al limpiarse la condición, y
->   **auto-remedia** si `auto_remediate` y se cruza `auto_threshold` (ejecuta el
->   workaround vía `services/workaround_exec.py`, auditado `alert.auto_remediate`,
->   respeta cooldown). Ej.: *log al 99% → `shrink_log` solo*; *servicio caído →
->   `start_sql_service` solo*.
+>   **auto-remedia** si `auto_remediate` y se cumple el disparo (ejecuta el workaround
+>   vía `services/workaround_exec.py`, auditado `alert.auto_remediate`, respeta cooldown).
+>   Dos disparos combinables: por **magnitud** (`auto_threshold`, ej. *log 99% → shrink*)
+>   y por **duración** (`auto_after_seconds`: la alerta lleva activa ≥ N seg desde su
+>   `created_at`, ej. *servicio caído > 2 min → start_sql_service*). No dispara en el
+>   primer chequeo (evita parpadeos); requiere evaluación periódica (scheduler) o
+>   "Evaluar ahora" repetido.
 > - **Ciclo de vida** de la alerta: `active → acknowledged → resolved | false_alarm`
 >   (`alerts_repo`, colección `alerts`). Endpoints `routes/alerts.py`: reglas
 >   (`/alerts/rules*`, `/alerts/rules/seed`, `/alerts/templates`), feed

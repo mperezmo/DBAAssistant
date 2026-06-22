@@ -59,8 +59,8 @@ RULE_TEMPLATES = [
      "description": "Log de la base por encima del 80%. Auto-shrink al 99%."},
     {"metric": "service_down", "name": "Servicio SQL caído", "operator": "gte", "threshold": 1,
      "severity": "critical", "scope": "availability", "suggested_workaround_key": "start_sql_service",
-     "auto_remediate": True, "auto_threshold": 1,
-     "description": "El servicio de SQL Server no está corriendo. Auto-inicia (WinRM)."},
+     "auto_remediate": True, "auto_after_seconds": 120,
+     "description": "El servicio de SQL Server no está corriendo. Auto-inicia (WinRM) si sigue caído ≥ 2 min."},
     {"metric": "instance_unreachable", "name": "Instancia inalcanzable", "operator": "gte", "threshold": 1,
      "severity": "critical", "scope": "availability", "suggested_workaround_key": "start_sql_service",
      "description": "No se puede conectar a la instancia."},
@@ -127,6 +127,17 @@ def _in_cooldown(raw: dict) -> bool:
     return (datetime.now(timezone.utc) - last).total_seconds() < raw.get("cooldown_seconds", 300)
 
 
+def _sustained_seconds(alert: dict) -> float:
+    """Hace cuánto que la alerta está activa (desde que se levantó por primera vez)."""
+    created = alert.get("created_at")
+    if not created:
+        return 0.0
+    try:
+        return (datetime.now(timezone.utc) - datetime.fromisoformat(created)).total_seconds()
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
 def _title(metric: str, operator: str, threshold) -> str:
     return f"{_LABEL.get(metric, metric)} {_OP_SYM.get(operator, operator)} {threshold}"
 
@@ -156,6 +167,7 @@ def evaluate(actor: str = "scheduler") -> list[dict]:
 
             breached = op(value, threshold)
             auto = False
+            note = None
             if breached:
                 source = names.get(conn, conn) + (f"/{db}" if db else "")
                 alert = alerts_repo.raise_or_update({
@@ -167,23 +179,31 @@ def evaluate(actor: str = "scheduler") -> list[dict]:
                     "suggested_workaround_key": raw.get("suggested_workaround_key"),
                 })
                 wk_key = raw.get("suggested_workaround_key")
-                auto_thr = raw.get("auto_threshold")
-                if (raw.get("auto_remediate") and wk_key and auto_thr is not None
-                        and op(value, auto_thr) and not _in_cooldown(raw)):
-                    wk = workaround_exec.resolve(wk_key)
-                    if wk is not None:
-                        workaround_exec.apply(wk, conn, db)
-                        alerts_repo.mark_auto_remediated(alert["id"])
-                        workarounds_repo.log_run(actor, wk_key, conn, db, "auto", success=True)
-                        audit_repo.log(actor, "alert.auto_remediate", target=f"{conn}/{db}",
-                                       detail=f"{wk_key} · {metric}={value}")
-                        auto = True
+                if raw.get("auto_remediate") and wk_key and not _in_cooldown(raw):
+                    auto_thr = raw.get("auto_threshold")
+                    after = raw.get("auto_after_seconds")
+                    sustained = _sustained_seconds(alert)
+                    # Gates: por MAGNITUD (auto_threshold) y/o por DURACIÓN (auto_after_seconds).
+                    # Cada gate "abre" si no está configurado; debe haber al menos uno.
+                    mag_ok = auto_thr is None or op(value, auto_thr)
+                    dur_ok = after is None or sustained >= after
+                    if (auto_thr is not None or after is not None) and mag_ok and dur_ok:
+                        wk = workaround_exec.resolve(wk_key)
+                        if wk is not None:
+                            workaround_exec.apply(wk, conn, db)
+                            alerts_repo.mark_auto_remediated(alert["id"])
+                            workarounds_repo.log_run(actor, wk_key, conn, db, "auto", success=True)
+                            audit_repo.log(actor, "alert.auto_remediate", target=f"{conn}/{db}",
+                                           detail=f"{wk_key} · {metric}={value} · {int(sustained)}s")
+                            auto = True
+                    elif after is not None and not dur_ok:
+                        note = f"sostenida {int(sustained)}s/{after}s"
             else:
                 alerts_repo.resolve_active_for_rule(rule_id)
 
             alerts_repo.mark_checked(rule_id, value, auto)
             results.append({**base, "checked": True, "breached": breached,
-                            "value": value, "auto_remediated": auto})
+                            "value": value, "auto_remediated": auto, "status": note})
         except Exception as exc:  # noqa: BLE001
             results.append({**base, "checked": False, "breached": False, "error": str(exc)})
     return results

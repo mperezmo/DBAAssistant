@@ -48,6 +48,7 @@ def _rule_public(doc: dict) -> dict:
         "suggested_workaround_key": doc.get("suggested_workaround_key"),
         "auto_remediate": doc.get("auto_remediate", False),
         "auto_threshold": doc.get("auto_threshold"),
+        "auto_after_seconds": doc.get("auto_after_seconds"),
         "cooldown_seconds": doc.get("cooldown_seconds", 300),
         "enabled": doc.get("enabled", True),
         "last_checked": _iso(doc.get("last_checked")),

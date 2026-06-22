@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.routes import (
-    audit, auth, cache, chat, connections, context, health, optimization, performance,
-    schema, sql, workarounds,
+    alerts, audit, auth, cache, chat, connections, context, health, optimization,
+    performance, schema, sql, workarounds,
 )
 
 settings = get_settings()
@@ -32,6 +32,7 @@ TAGS_METADATA = [
     {"name": "cache", "description": "Estadísticas y limpieza de la caché Redis."},
     {"name": "context", "description": "Contexto de negocio (glosario, reglas, tablas) que enriquece la IA."},
     {"name": "workarounds", "description": "Playbooks de remediación pre-aprobados (diagnóstico / aplicar)."},
+    {"name": "alerts", "description": "Alertas por umbrales sobre métricas + auto-remediación dirigida."},
 ]
 
 app = FastAPI(
@@ -62,6 +63,7 @@ app.include_router(cache.router)
 app.include_router(optimization.router)
 app.include_router(context.router)
 app.include_router(workarounds.router)
+app.include_router(alerts.router)
 
 
 @app.on_event("startup")

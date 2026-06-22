@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import Logo from './Logo.jsx';
 import Icon from './Icon.jsx';
+import { getAlertCount } from '../api.js';
 
 const NAV_ITEMS = [
   { section: 'Operaciones', items: [
@@ -22,8 +24,8 @@ const NAV_ITEMS = [
   ]},
 ];
 
-// Sprint 3: Chat · Sprint 4: Esquema/Monitoreo/Auditoría/Admin · Sprint 5: Sandbox · Sprint 10: Workarounds.
-const ENABLED = new Set(['chat', 'schema', 'monitor', 'sandbox', 'optimize', 'context', 'audit', 'admin', 'workarounds']);
+// Sprint 3: Chat · 4: Esquema/Monitoreo/Auditoría/Admin · 5: Sandbox · 10: Workarounds · 11: Alertas.
+const ENABLED = new Set(['chat', 'schema', 'monitor', 'sandbox', 'optimize', 'context', 'audit', 'admin', 'workarounds', 'alerts']);
 
 function initialsOf(name) {
   const parts = (name || 'Usuario').trim().split(/\s+/).slice(0, 2);
@@ -31,8 +33,21 @@ function initialsOf(name) {
 }
 
 export default function Sidebar({ active, onNav }) {
-  const { user, logout } = useAuth0();
+  const { user, logout, getAccessTokenSilently } = useAuth0();
   const name = user?.name || user?.email || 'Usuario';
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const t = await getAccessTokenSilently();
+        const { active: n } = await getAlertCount(t);
+        if (alive) setAlertCount(n || 0);
+      } catch { /* ignore */ }
+    })();
+    return () => { alive = false; };
+  }, [getAccessTokenSilently, active]);
 
   return (
     <aside className="sidebar">
@@ -58,6 +73,13 @@ export default function Sidebar({ active, onNav }) {
               >
                 <Icon name={it.icon} size={16} />
                 <span>{it.label}</span>
+                {it.id === 'alerts' && alertCount > 0 && (
+                  <span style={{
+                    marginLeft: 'auto', background: 'var(--terracotta)', color: '#fff',
+                    fontSize: 10, fontWeight: 700, borderRadius: 10, padding: '1px 7px',
+                    fontFamily: 'var(--font-mono)',
+                  }}>{alertCount}</span>
+                )}
               </button>
             );
           })}

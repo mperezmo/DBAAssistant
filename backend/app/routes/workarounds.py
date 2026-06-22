@@ -10,12 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.dependencies import get_current_user
 from app.models.auth import User
 from app.models.workaround import (
-    RuleEvaluation, Workaround, WorkaroundCreate, WorkaroundRule, WorkaroundRuleCreate,
-    WorkaroundRuleUpdate, WorkaroundRunEntry, WorkaroundRunRequest, WorkaroundRunResponse,
+    Workaround, WorkaroundCreate, WorkaroundRunEntry, WorkaroundRunRequest, WorkaroundRunResponse,
 )
 from app.services import (
-    audit_repo, automation, cache, connections_repo, host_control, sql_executor,
-    sql_validator, workarounds, workarounds_repo,
+    audit_repo, cache, connections_repo, host_control, sql_executor, sql_validator,
+    workarounds, workarounds_repo,
 )
 
 router = APIRouter(prefix="/workarounds", tags=["workarounds"])
@@ -73,55 +72,6 @@ def delete_workaround(key: str, request: Request, user: User = Depends(get_curre
 @router.get("/runs", response_model=list[WorkaroundRunEntry])
 def list_runs(limit: int = 50, user: User = Depends(get_current_user)):
     return workarounds_repo.list_runs(min(limit, 200))
-
-
-# ── Reglas de automatización (Sprint 10.1) ───────────────────────────────────
-
-@router.get("/rules", response_model=list[WorkaroundRule])
-def list_rules(user: User = Depends(get_current_user)):
-    return workarounds_repo.list_rules()
-
-
-@router.post("/rules", response_model=WorkaroundRule, status_code=status.HTTP_201_CREATED)
-def create_rule(body: WorkaroundRuleCreate, request: Request,
-                user: User = Depends(get_current_user)):
-    if _resolve(body.workaround_key) is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"El workaround '{body.workaround_key}' no existe.")
-    created = workarounds_repo.create_rule(body.model_dump())
-    audit_repo.log(user.email or user.username, "workaround.rule_create",
-                   target=body.workaround_key, detail=body.name, ip=_ip(request))
-    return created
-
-
-@router.put("/rules/{rule_id}", response_model=WorkaroundRule)
-def update_rule(rule_id: str, body: WorkaroundRuleUpdate, request: Request,
-                user: User = Depends(get_current_user)):
-    updated = workarounds_repo.update_rule(rule_id, body.model_dump())
-    if updated is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Regla no encontrada.")
-    audit_repo.log(user.email or user.username, "workaround.rule_update",
-                   target=rule_id, ip=_ip(request))
-    return updated
-
-
-@router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_rule(rule_id: str, request: Request, user: User = Depends(get_current_user)):
-    if not workarounds_repo.delete_rule(rule_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Regla no encontrada.")
-    audit_repo.log(user.email or user.username, "workaround.rule_delete",
-                   target=rule_id, ip=_ip(request))
-
-
-@router.post("/rules/evaluate", response_model=list[RuleEvaluation])
-def evaluate_rules(request: Request, user: User = Depends(get_current_user)):
-    """Evalúa todas las reglas habilitadas AHORA (manual). Dispara las que correspondan."""
-    actor = user.email or user.username
-    results = automation.evaluate_rules(actor)
-    triggered = sum(1 for r in results if r.get("triggered"))
-    audit_repo.log(actor, "workaround.evaluate", detail=f"{len(results)} reglas · {triggered} disparadas",
-                   ip=_ip(request))
-    return results
 
 
 def _run_service(key: str, connection_id: str, mode: str) -> tuple[WorkaroundRunResponse, int | None]:

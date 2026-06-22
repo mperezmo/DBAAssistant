@@ -3,7 +3,6 @@ import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../components/Icon.jsx';
 import {
   getConnections, getDatabases, getWorkarounds, runWorkaround, createWorkaround, deleteWorkaround,
-  getRules, createRule, updateRule, deleteRule, evaluateRules,
 } from '../api.js';
 
 const selectStyle = {
@@ -35,7 +34,6 @@ export default function WorkaroundsPage({ env, connectionId, onSelectConnection,
   const [q, setQ] = useState('');
   const [runWk, setRunWk] = useState(null);   // workaround abierto en el modal de ejecución
   const [showCreate, setShowCreate] = useState(false);
-  const [showAuto, setShowAuto] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -152,9 +150,6 @@ export default function WorkaroundsPage({ env, connectionId, onSelectConnection,
       {/* Toolbar: nuevo + filtros + búsqueda */}
       <div className="row" style={{ marginBottom: 20, gap: 10, flexWrap: 'wrap' }}>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}><Icon name="plus" size={14} /> Nuevo workaround</button>
-        <button className={`btn ${showAuto ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShowAuto((s) => !s)}>
-          <Icon name="refresh" size={14} /> Automatización
-        </button>
         {CATEGORIES.map((c) => (
           <button
             key={c}
@@ -179,16 +174,6 @@ export default function WorkaroundsPage({ env, connectionId, onSelectConnection,
           <span style={{ position: 'absolute', left: 10, top: 9, color: 'var(--fg-faint)' }}><Icon name="search" size={14} /></span>
         </div>
       </div>
-
-      {showAuto && (
-        <AutomationPanel
-          catalog={catalog}
-          connectionId={connectionId}
-          database={database}
-          getToken={getAccessTokenSilently}
-          onRan={loadCatalog}
-        />
-      )}
 
       {loading && <div style={{ color: 'var(--fg-faint)' }}>Cargando catálogo…</div>}
       {!loading && filtered.length === 0 && (
@@ -400,163 +385,6 @@ function RunModal({ wk, env, connectionId, database, getToken, onClose, onRan })
         </div>
       )}
     </Modal>
-  );
-}
-
-function AutomationPanel({ catalog, connectionId, database, getToken, onRan }) {
-  const [rules, setRules] = useState([]);
-  const [err, setErr] = useState('');
-  const [evalRes, setEvalRes] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', workaround_key: '', min_rows: 1, cooldown_seconds: 300 });
-
-  const loadRules = useCallback(async () => {
-    setErr('');
-    try {
-      const t = await getToken();
-      setRules(await getRules(t));
-    } catch (e) { setErr(e.message); }
-  }, [getToken]);
-
-  useEffect(() => { loadRules(); }, [loadRules]);
-
-  async function evaluate() {
-    setBusy(true);
-    setErr('');
-    try {
-      const t = await getToken();
-      setEvalRes(await evaluateRules(t));
-      await loadRules();
-      onRan();
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
-  }
-
-  async function toggle(r) {
-    try {
-      const t = await getToken();
-      await updateRule(t, r.id, { enabled: !r.enabled });
-      loadRules();
-    } catch (e) { setErr(e.message); }
-  }
-
-  async function remove(id) {
-    if (!window.confirm('¿Borrar esta regla de automatización?')) return;
-    try {
-      const t = await getToken();
-      await deleteRule(t, id);
-      loadRules();
-    } catch (e) { setErr(e.message); }
-  }
-
-  async function submit() {
-    setBusy(true);
-    setErr('');
-    try {
-      const t = await getToken();
-      await createRule(t, {
-        ...form, min_rows: Number(form.min_rows), cooldown_seconds: Number(form.cooldown_seconds),
-        connection_id: connectionId, database: database || '',
-      });
-      setShowForm(false);
-      setForm({ name: '', workaround_key: '', min_rows: 1, cooldown_seconds: 300 });
-      loadRules();
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
-  }
-
-  return (
-    <div className="card" style={{ marginBottom: 20 }}>
-      <div className="card-head">
-        <div>
-          <div className="card-eyebrow">Automatización · reglas "si y solo si"</div>
-          <h3 className="card-title">Auto-remediación</h3>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowForm((s) => !s)} disabled={!connectionId} title={!connectionId ? 'Elegí una conexión arriba' : ''}>
-            <Icon name="plus" size={13} /> Nueva regla
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={evaluate} disabled={busy}>
-            <Icon name="play" size={13} /> {busy ? 'Evaluando…' : 'Evaluar ahora'}
-          </button>
-        </div>
-      </div>
-
-      <div className="card-body">
-        <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginBottom: 12 }}>
-          Cada regla corre el <strong>diagnóstico</strong> del workaround; si detecta ≥ umbral problemas, <strong>aplica</strong> la
-          remediación. "Evaluar ahora" las corre todas. El scheduler automático (cada N seg) es opt-in por <span className="metric-mono">AUTOMATION_ENABLED</span>.
-        </div>
-
-        {err && <div className="tag tag-red" style={{ display: 'inline-flex', marginBottom: 12 }}><Icon name="warn" size={11} /> {err}</div>}
-
-        {showForm && (
-          <div style={{ background: 'var(--bg-sunk)', borderRadius: 'var(--radius-sm)', padding: 14, marginBottom: 14 }}>
-            <div className="grid-3" style={{ gap: 12 }}>
-              <div className="field"><label>Nombre</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Reiniciar SQL si cae" /></div>
-              <div className="field"><label>Workaround</label>
-                <select value={form.workaround_key} onChange={(e) => setForm({ ...form, workaround_key: e.target.value })}>
-                  <option value="">— Elegí —</option>
-                  {catalog.map((w) => <option key={w.key} value={w.key}>{w.name}</option>)}
-                </select>
-              </div>
-              <div className="field"><label>Umbral (filas)</label><input value={form.min_rows} onChange={(e) => setForm({ ...form, min_rows: e.target.value })} /></div>
-              <div className="field"><label>Cooldown (seg)</label><input value={form.cooldown_seconds} onChange={(e) => setForm({ ...form, cooldown_seconds: e.target.value })} /></div>
-            </div>
-            <div style={{ fontSize: 11.5, color: 'var(--fg-faint)', margin: '8px 0' }}>
-              Se crea sobre la conexión activa{database ? <> y la base <strong>{database}</strong></> : ' (los de servicio no usan base)'}.
-            </div>
-            <div className="row" style={{ gap: 8 }}>
-              <button className="btn btn-primary btn-sm" onClick={submit} disabled={busy || !form.name || !form.workaround_key}>Crear regla</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Cancelar</button>
-            </div>
-          </div>
-        )}
-
-        {evalRes && (
-          <div style={{ marginBottom: 14 }}>
-            <div className="card-eyebrow" style={{ marginBottom: 6 }}>Última evaluación · {evalRes.filter((r) => r.triggered).length} disparada(s) de {evalRes.length}</div>
-            {evalRes.length === 0 && <div style={{ fontSize: 12, color: 'var(--fg-faint)' }}>No hay reglas habilitadas.</div>}
-            {evalRes.map((r) => (
-              <div key={r.rule_id} style={{ fontSize: 12, fontFamily: 'var(--font-mono)', padding: '2px 0' }}>
-                <span className={`tag ${r.error ? 'tag-red' : r.triggered ? 'tag-green' : ''}`} style={{ display: 'inline-flex' }}>
-                  {r.error ? 'error' : r.triggered ? 'disparada' : (r.checked ? 'sin acción' : 'saltada')}
-                </span>{' '}
-                {r.name} · {r.error || r.status || ''}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={{ overflow: 'auto' }}>
-          <table className="data-table" style={{ fontSize: 12.5 }}>
-            <thead>
-              <tr><th>Regla</th><th>Workaround</th><th>Base</th><th style={{ textAlign: 'right' }}>Umbral</th><th style={{ textAlign: 'right' }}>Cooldown</th><th>Última corrida</th><th>Habilitada</th><th></th></tr>
-            </thead>
-            <tbody>
-              {rules.length === 0 && <tr><td colSpan={8} style={{ color: 'var(--fg-faint)' }}>No hay reglas. Creá una con "Nueva regla".</td></tr>}
-              {rules.map((r) => (
-                <tr key={r.id}>
-                  <td style={{ fontWeight: 600 }}>{r.name}</td>
-                  <td className="metric-mono" style={{ fontSize: 11.5 }}>{r.workaround_key}</td>
-                  <td className="metric-mono" style={{ fontSize: 11.5, color: 'var(--fg-muted)' }}>{r.database || '—'}</td>
-                  <td className="metric-mono" style={{ textAlign: 'right' }}>{r.min_rows}</td>
-                  <td className="metric-mono" style={{ textAlign: 'right' }}>{r.cooldown_seconds}s</td>
-                  <td className="metric-mono" style={{ fontSize: 11 }}>{r.last_triggered ? formatWhen(r.last_triggered) : '—'}{r.last_status ? ` · ${r.last_status}` : ''}</td>
-                  <td>
-                    <button className={`tag ${r.enabled ? 'tag-green' : ''}`} style={{ cursor: 'pointer' }} onClick={() => toggle(r)}>
-                      {r.enabled ? 'sí' : 'no'}
-                    </button>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => remove(r.id)} title="Borrar"><Icon name="x" size={12} /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
   );
 }
 

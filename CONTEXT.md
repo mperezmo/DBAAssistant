@@ -5,9 +5,9 @@
 >
 > **Última actualización:** 2026-06-22
 > **Estado actual:** Sprints 1-8 ✅ (core completo) · Sprint 9 ✅ (Contexto de Negocio)
-> · Sprint 10 ✅ (Workarounds) · Sprint 10.1 ✅ (servicio Windows vía WinRM +
-> automatización por reglas).
-> Opciones de menú pendientes (plan 11-12): **Alertas**, **Dashboard/Inicio**.
+> · Sprint 10 ✅ (Workarounds) · Sprint 10.1 ✅ (servicio Windows vía WinRM)
+> · Sprint 11 ✅ (Alertas + auto-remediación dirigida).
+> Opción de menú pendiente (plan 12): **Dashboard/Inicio**.
 > Deploy real a Azure pendiente solo de credenciales del usuario.
 >
 > **Cambio de arquitectura (Sprint 3):** el frontend pasó de HTML/JS vanilla a
@@ -182,8 +182,34 @@
 >   - Ejemplo de uso: regla con `start_sql_service` + umbral 1 → si el servicio está
 >     caído, lo inicia solo.
 > - Frontend: form WinRM por conexión en `Admin.jsx`; en `Workarounds.jsx`, categoría
->   *Disponibilidad*, modal adaptado para `kind=service`, y panel **Automatización**
->   (reglas con toggle/umbral/cooldown + "Evaluar ahora"). 98 tests.
+>   *Disponibilidad* y modal adaptado para `kind=service`. 98 tests.
+>
+> **Sprint 11 — Alertas (monitoreo por umbrales + auto-remediación dirigida):**
+> - **Reglas de alerta** (`alert_rules`, Mongo): umbral (metric, operator, threshold,
+>   severity) por conexión (y por base para `log_used_pct`), con `suggested_workaround_key`
+>   y, opcional, `auto_remediate` + `auto_threshold` (límite máximo). Built-in vía
+>   **plantillas** recomendadas (`alerts.RULE_TEMPLATES`, seed por conexión) + CRUD custom.
+> - **Métricas** (`services/alerts.py`): instancia (`performance_repo.get_metrics`),
+>   base (`log_used_pct` de `sys.database_files`), disponibilidad (`service_down` vía
+>   WinRM, `instance_unreachable`).
+> - **Motor** `alerts.evaluate`: compara valor vs umbral; **levanta/actualiza** alerta
+>   (dedup: una `active` por regla), **resuelve** al limpiarse la condición, y
+>   **auto-remedia** si `auto_remediate` y se cruza `auto_threshold` (ejecuta el
+>   workaround vía `services/workaround_exec.py`, auditado `alert.auto_remediate`,
+>   respeta cooldown). Ej.: *log al 99% → `shrink_log` solo*; *servicio caído →
+>   `start_sql_service` solo*.
+> - **Ciclo de vida** de la alerta: `active → acknowledged → resolved | false_alarm`
+>   (`alerts_repo`, colección `alerts`). Endpoints `routes/alerts.py`: reglas
+>   (`/alerts/rules*`, `/alerts/rules/seed`, `/alerts/templates`), feed
+>   (`GET /alerts`, `PATCH /alerts/{id}`, `GET /alerts/count`) y `POST /alerts/evaluate`.
+> - **Disparo**: manual ("Evaluar ahora") + **scheduler interno** opt-in
+>   (`services/scheduler.py`, `ALERTS_ENABLED`/`ALERTS_INTERVAL_SECONDS`).
+> - **⚠️ Reemplaza la automatización del Sprint 10.1**: se borró el motor de reglas de
+>   workaround (`automation.py`, `workaround_rules`, panel "Automatización" de
+>   Workarounds). La auto-remediación ahora es **dirigida por alertas** únicamente.
+> - Frontend: `Alerts.jsx` (feed por severidad + detalle con datos del evento, workaround
+>   sugerido y acciones Atender/Asignarme/Resolver/Falsa alarma + gestor de reglas con
+>   "Cargar recomendadas"). Badge de alertas activas en el sidebar. 106 tests.
 
 ---
 
@@ -214,7 +240,8 @@ recomendaciones de optimización.
 | **8** | Testing & Docs | ✅ **COMPLETADO** |
 | **9** | Contexto de Negocio + IA (chat-agente) | ✅ **COMPLETADO** |
 | **10** | Workarounds (biblioteca de remediación) | ✅ **COMPLETADO** |
-| **10.1** | Workarounds: servicio Windows (WinRM) + automatización por reglas | ✅ **COMPLETADO** |
+| **10.1** | Workarounds: servicio Windows (WinRM) | ✅ **COMPLETADO** |
+| **11** | Alertas (umbrales + auto-remediación dirigida) | ✅ **COMPLETADO** |
 
 ---
 

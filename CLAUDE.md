@@ -20,18 +20,20 @@ orquestado con **Docker Compose**. Diseño en `design/DBA Assistant.html`.
   statistics, shrink de log, limpiar plan cache, checkpoint) + CRUD de
   workarounds custom (Mongo). Cada uno corre en **diagnóstico** (solo lectura) o
   **aplicar** (remediación real, AUTOCOMMIT), por conexión+base, auditado.
-- **Sprint 10.1 ✅** Extensiones de Workarounds:
-  - **Workaround de servicio (`start_sql_service`)**: inicia el servicio de SQL
-    Server a nivel **Windows vía WinRM** (`services/host_control.py`, `pywinrm`),
-    útil cuando el motor está caído (sin conexión T-SQL). Config WinRM por
-    conexión en *Panel Admin* (`/connections/{id}/host-control`).
-  - **Automatización por reglas** (`workaround_rules`): "si y solo si" el
-    diagnóstico detecta el problema (≥ umbral), aplica la remediación. Motor
-    `services/automation.py` (`workaround.auto`), botón **Evaluar ahora**
-    (`/workarounds/rules/evaluate`) y **scheduler interno** opt-in
-    (`AUTOMATION_ENABLED`, `services/scheduler.py`).
-- **Pendientes (plan)** para las opciones de menú deshabilitadas:
-  **Sprint 11 Alertas**, **Sprint 12 Dashboard/Inicio**.
+- **Sprint 10.1 ✅** **Workaround de servicio (`start_sql_service`)**: inicia el
+  servicio de SQL Server a nivel **Windows vía WinRM** (`services/host_control.py`,
+  `pywinrm`), útil cuando el motor está caído (sin conexión T-SQL). Config WinRM
+  por conexión en *Panel Admin* (`/connections/{id}/host-control`).
+- **Sprint 11 ✅** **Alertas** (monitoreo por umbrales): reglas built-in (plantillas)
+  + custom sobre métricas en vivo (`performance_repo` + log/servicio/alcanzable);
+  levantan alertas con severidad y **workaround sugerido**. Motor `services/alerts.py`
+  con **auto-remediación dirigida**: al cruzar el **umbral máximo** ejecuta el
+  workaround solo (ej. log 99% → `shrink_log`). Botón **Evaluar ahora**
+  (`/alerts/evaluate`) + **scheduler interno** opt-in (`ALERTS_ENABLED`). ⚠️ La
+  automatización del Sprint 10.1 (reglas de workaround) **se reemplazó** por este
+  motor único de alertas (se quitó el panel "Automatización" de Workarounds).
+- **Pendientes (plan)** para la opción de menú deshabilitada:
+  **Sprint 12 Dashboard/Inicio**.
 
 ## Cómo correr (desarrollo)
 - `docker-compose up -d` — SQL Server (host `:14330`), Mongo `:27017`, Redis `:6379`,
@@ -64,8 +66,8 @@ orquestado con **Docker Compose**. Diseño en `design/DBA Assistant.html`.
 ## Config / secretos
 `.env` (gitignored): `SQL_SERVER_*`, `MONGODB_*`, `REDIS_URL`, `AUTH_MODE=auth0`
 (+ `AUTH0_DOMAIN/CLIENT_ID/AUDIENCE`), `ANTHROPIC_API_KEY`, `CLAUDE_MODEL`.
-Automatización (Sprint 10.1, opcional): `AUTOMATION_ENABLED=false`,
-`AUTOMATION_INTERVAL_SECONDS=60`. Credenciales WinRM: por conexión (Mongo, texto
+Alertas/auto-remediación (Sprint 11, opcional): `ALERTS_ENABLED=false`,
+`ALERTS_INTERVAL_SECONDS=60`. Credenciales WinRM: por conexión (Mongo, texto
 plano dev/TFI; la API nunca devuelve la password).
 
 ## Docs

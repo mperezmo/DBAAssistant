@@ -12,11 +12,12 @@ import SandboxPage from './pages/Sandbox.jsx';
 import OptimizePage from './pages/Optimize.jsx';
 import ContextPage from './pages/Context.jsx';
 import WorkaroundsPage from './pages/Workarounds.jsx';
+import AlertsPage from './pages/Alerts.jsx';
 
 const PAGES = {
   chat: ChatPage, schema: SchemaPage, admin: AdminPage, monitor: MonitorPage,
   audit: AuditPage, sandbox: SandboxPage, optimize: OptimizePage, context: ContextPage,
-  workarounds: WorkaroundsPage,
+  workarounds: WorkaroundsPage, alerts: AlertsPage,
 };
 
 export default function App() {

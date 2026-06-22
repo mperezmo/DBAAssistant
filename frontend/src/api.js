@@ -107,9 +107,15 @@ export const getWorkaroundRuns = (token) => authGet(token, '/workarounds/runs?li
 export const getHostControl = (token, conn) => authGet(token, `/connections/${conn}/host-control`);
 export const putHostControl = (token, conn, body) => authSend(token, 'PUT', `/connections/${conn}/host-control`, body);
 
-// ── Automatización de workarounds por reglas (Sprint 10.1) ──
-export const getRules = (token) => authGet(token, '/workarounds/rules');
-export const createRule = (token, body) => authSend(token, 'POST', '/workarounds/rules', body);
-export const updateRule = (token, id, body) => authSend(token, 'PUT', `/workarounds/rules/${id}`, body);
-export const deleteRule = (token, id) => authSend(token, 'DELETE', `/workarounds/rules/${id}`);
-export const evaluateRules = (token) => authSend(token, 'POST', '/workarounds/rules/evaluate');
+// ── Alertas por umbrales (Sprint 11) ──
+export const getAlerts = (token, status) => authGet(token, `/alerts${status ? `?status=${status}` : ''}`);
+export const patchAlert = (token, id, body) => authSend(token, 'PATCH', `/alerts/${id}`, body);
+export const getAlertCount = (token) => authGet(token, '/alerts/count');
+export const evaluateAlerts = (token) => authSend(token, 'POST', '/alerts/evaluate');
+export const getAlertTemplates = (token) => authGet(token, '/alerts/templates');
+export const getAlertRules = (token, conn) => authGet(token, `/alerts/rules${conn ? `?connection_id=${conn}` : ''}`);
+export const createAlertRule = (token, body) => authSend(token, 'POST', '/alerts/rules', body);
+export const updateAlertRule = (token, id, body) => authSend(token, 'PUT', `/alerts/rules/${id}`, body);
+export const deleteAlertRule = (token, id) => authSend(token, 'DELETE', `/alerts/rules/${id}`);
+export const seedAlertRules = (token, conn, database) =>
+  authSend(token, 'POST', `/alerts/rules/seed?connection_id=${conn}${database ? `&database=${e(database)}` : ''}`);

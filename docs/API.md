@@ -62,14 +62,16 @@ Todos los endpoints (salvo `/` y `/health`) requieren `Authorization: Bearer <JW
   `kind=service` (ej. `start_sql_service`) actúan por WinRM, no por T-SQL.
 - `GET /workarounds/runs` — historial de ejecuciones.
 
-### Automatización de workarounds (Sprint 10.1)
-- `GET`/`POST /workarounds/rules` — reglas "si y solo si" (workaround + conexión/base
-  + umbral `min_rows` + `cooldown_seconds`).
-- `PUT`/`DELETE /workarounds/rules/{id}` — editar (habilitar/deshabilitar) o borrar.
-- `POST /workarounds/rules/evaluate` — evalúa todas las reglas habilitadas ahora:
-  corre el diagnóstico y, si detecta el problema, aplica la remediación
-  (auditado `workaround.evaluate` / `workaround.auto`). El scheduler interno
-  (`AUTOMATION_ENABLED`) hace lo mismo cada `AUTOMATION_INTERVAL_SECONDS`.
+### Alertas (Sprint 11)
+- Reglas/umbrales: `GET`/`POST /alerts/rules`, `PUT`/`DELETE /alerts/rules/{id}`,
+  `POST /alerts/rules/seed?connection_id=&database=` (carga las plantillas
+  recomendadas), `GET /alerts/templates`.
+- Feed: `GET /alerts?status=active`, `PATCH /alerts/{id}` (estado/asignación →
+  acknowledged/resolved/false_alarm), `GET /alerts/count` (badge).
+- `POST /alerts/evaluate` — chequea las reglas ahora: levanta/resuelve alertas y
+  **auto-remedia** al cruzar el umbral máximo (auditado `alert.evaluate` /
+  `alert.auto_remediate`). El scheduler interno (`ALERTS_ENABLED`) hace lo mismo
+  cada `ALERTS_INTERVAL_SECONDS`. Es la única vía de auto-remediación del sistema.
 
 ### Auditoría · Caché
 - `GET /audit`

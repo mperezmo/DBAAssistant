@@ -30,6 +30,7 @@ export default function WorkaroundsPage({ env, connectionId, onSelectConnection,
   const [catalog, setCatalog] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [dbNote, setDbNote] = useState('');
   const [cat, setCat] = useState('Todos');
   const [q, setQ] = useState('');
   const [runWk, setRunWk] = useState(null);   // workaround abierto en el modal de ejecución
@@ -48,6 +49,7 @@ export default function WorkaroundsPage({ env, connectionId, onSelectConnection,
   useEffect(() => {
     setDatabase('');
     setDatabases([]);
+    setDbNote('');
     if (!connectionId) return;
     (async () => {
       try {
@@ -55,7 +57,11 @@ export default function WorkaroundsPage({ env, connectionId, onSelectConnection,
         const dbs = await getDatabases(t, connectionId);
         setDatabases(dbs);
         if (dbs.length) setDatabase(dbs[0]);
-      } catch (e) { setError(e.message); }
+      } catch {
+        // El motor puede estar caído: no se pueden listar bases. No es fatal —
+        // los workarounds de servicio (Windows) igual se pueden ejecutar.
+        setDbNote('No se pudieron listar las bases (¿el motor está caído?). Igual podés correr los workarounds de servicio.');
+      }
     })();
   }, [connectionId, getAccessTokenSilently]);
 
@@ -86,8 +92,6 @@ export default function WorkaroundsPage({ env, connectionId, onSelectConnection,
       (cat === 'Todos' || w.category === cat) &&
       (!needle || `${w.name} ${w.description} ${w.key}`.toLowerCase().includes(needle)));
   }, [catalog, cat, q]);
-
-  const ready = Boolean(connectionId && database);
 
   async function handleDelete(key) {
     if (!window.confirm(`¿Borrar el workaround "${key}"? Esta acción no se puede deshacer.`)) return;
@@ -129,9 +133,14 @@ export default function WorkaroundsPage({ env, connectionId, onSelectConnection,
         <button className="btn btn-ghost btn-sm" onClick={loadCatalog}><Icon name="refresh" size={13} /> Refrescar</button>
       </div>
 
-      {!ready && (
+      {!connectionId && (
         <div className="tag" style={{ display: 'inline-flex', marginBottom: 16, color: 'var(--fg-muted)' }}>
-          <Icon name="info" size={11} /> Elegí una conexión y una base para poder ejecutar.
+          <Icon name="info" size={11} /> Elegí una conexión para ejecutar. Los workarounds de SQL además piden una base; los de servicio (Windows) no.
+        </div>
+      )}
+      {dbNote && (
+        <div className="tag tag-yellow" style={{ display: 'inline-flex', marginBottom: 16 }}>
+          <Icon name="warn" size={11} /> {dbNote}
         </div>
       )}
       {error && (
@@ -198,7 +207,6 @@ export default function WorkaroundsPage({ env, connectionId, onSelectConnection,
           env={env}
           connectionId={connectionId}
           database={database}
-          ready={ready}
           getToken={getAccessTokenSilently}
           onClose={() => setRunWk(null)}
           onRan={loadCatalog}
@@ -309,7 +317,9 @@ function SqlBlock({ label, sql }) {
   );
 }
 
-function RunModal({ wk, env, connectionId, database, ready, getToken, onClose, onRan }) {
+function RunModal({ wk, env, connectionId, database, getToken, onClose, onRan }) {
+  const isService = wk.kind === 'service';
+  const ready = isService ? Boolean(connectionId) : Boolean(connectionId && database);
   const [busy, setBusy] = useState('');     // 'diagnose' | 'apply' | ''
   const [diag, setDiag] = useState(null);   // {columns, rows, truncated}
   const [applied, setApplied] = useState(null); // {affected_rows, message, elapsed_ms}
@@ -317,8 +327,9 @@ function RunModal({ wk, env, connectionId, database, ready, getToken, onClose, o
 
   async function run(mode) {
     setErr('');
+    const target = isService ? 'el servicio de Windows' : `la base ${database}`;
     if (mode === 'apply' && !window.confirm(
-      `Vas a APLICAR "${wk.name}" sobre ${database} (${env}). Es una acción real sobre la base. ¿Continuar?`)) return;
+      `Vas a APLICAR "${wk.name}" sobre ${target} (${env}). Es una acción real. ¿Continuar?`)) return;
     setBusy(mode);
     try {
       const t = await getToken();
